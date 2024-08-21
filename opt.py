@@ -18,7 +18,7 @@ def optIGD(mymodel,mylikelihood,num_task=-2,testmode="test_WFG",train_x=[]):
     model.eval()
     likelihood.eval()
     # # Create an instance of the problem with the observed predictions
-    if testmode == "experiment":
+    if testmode == "experiment"or "CFD":
         problem = MyProblem(num_task,testmode,constr=0,n_var=train_x.shape[1])
     else:
         problem = MyProblem(num_task, testmode, constr=0)
@@ -46,7 +46,7 @@ def optIGD(mymodel,mylikelihood,num_task=-2,testmode="test_WFG",train_x=[]):
         problem = get_problem("wfg1", n_var=7, n_obj=2)
         plf = -problem.pareto_front()
     else:
-        problem = get_problem("dtlz1", n_var=7, n_obj=2)
+        problem = get_problem("dtlz1", n_var=7, n_obj=abs(num_task))
         #problem = get_problem("zdt1", n_var=7)
         plf = problem.pareto_front()
         plf = -np.power(plf, 1 / 3)
@@ -118,13 +118,18 @@ class MyProblem(Problem):
         with torch.no_grad(), gpytorch.settings.fast_pred_var(),gpytorch.settings.cholesky_jitter(1e-0):
             if self.num_task==-2:
                 observed_pred_yH = likelihood(*model((test_x, test_i_task2), (test_x, test_i_task2)))
+            elif self.num_task==-3:
+                observed_pred_yH = likelihood(*model((test_x, test_i_task2), (test_x, test_i_task2),(test_x, test_i_task2)))
+            elif self.num_task==3:
+                observed_pred_yH = likelihood(*model(test_x, test_x, test_x))
             else:
                 observed_pred_yH = likelihood(*model(test_x, test_x))
-            observed_pred_yHC = -1*np.array(observed_pred_yH[0].mean.tolist())  # ct high
-            observed_pred_yHE = -1*np.array(observed_pred_yH[1].mean.tolist())  # eta high
+            observed_pred_yHT = -1*np.array(observed_pred_yH[0].mean.tolist())  # ct high
+            observed_pred_yHL = -1*np.array(observed_pred_yH[1].mean.tolist())  # eta high
+            observed_pred_yHE = -1 * np.array(observed_pred_yH[2].mean.tolist())  # eta high
 
-        N=np.array([observed_pred_yHC,observed_pred_yHE]).T
+        N=np.array([observed_pred_yHT,observed_pred_yHL,observed_pred_yHE]).T
         out["F"] =N
-        if self.testmode=="experiment":
+        if self.testmode=="experiment"or "CFD":
             N1=-N[:, 1]-0.97
             #out["G"] = [N[:, 0]]         #.reshape(-1, 3, 1)
