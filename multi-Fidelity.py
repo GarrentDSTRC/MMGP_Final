@@ -10,7 +10,7 @@ from opt import *
 
 from gpytorch import kernels, means, models, mlls, settings, likelihoods, constraints, priors
 from gpytorch import distributions as distr
-path5='.\Database\multifidelity_database.pth'
+path5='.\Database\MMGP_database.pth'
 
 path1csv=r".\Database\saveX_gpytorch_multifidelity_multitask.csv"
 path2csv=r".\Database\saveI_gpytorch_multifidelity_multitask.csv"
@@ -27,7 +27,7 @@ path2H=r".\Database\savey_gpytorch_multi_EI_MS_H.npy"
 
 # We make an nxn grid of training points spaced every 1/(n-1) on [0,1]x[0,1]
 # n = 250
-init_sample = 8*5
+init_sample = 8*15
 UpB=len(Frame.iloc[:, 0].to_numpy())-1
 LowB=0
 Infillpoints=8*2
@@ -40,7 +40,7 @@ testsample=140
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device( "cpu")
 Offline=0
-testmode="experiment"
+testmode="CFD"
 UPBound = np.array(UPB).T
 LOWBound = np.array(LOWB).T
 dict = [i for i in range(TestX.shape[0])]
@@ -141,7 +141,7 @@ likelihood.train()
 # Use the adam optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=0.1)  # Includes GaussianLikelihood parameters
 
-cofactor = [0.5, 0.5]
+cofactor = [0.5, [0.3, 0.3, 0.3]]
 for i in range(Episode):
     print(  "Episode%d-point %d : %d "%(i, torch.sum(full_train_i).item(),len(full_train_i)-torch.sum(full_train_i).item())   )
     if os.path.exists(path5):
