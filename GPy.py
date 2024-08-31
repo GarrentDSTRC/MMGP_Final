@@ -33,15 +33,10 @@ OLSCALE=1
 #LOWB=[0.4, 0.1, 5, -180, -1,-1,100]
 UPB=[0.3, 1.3, 85, 180, 0.9,0.9,9,9,35]
 LOWB=[0.1, 0.4, 15, -180, -0.9,-0.9,0,0,10]
+
 import time
 inittime=time.time()
 ###################num——task   + single fidelity -multifidelity    ### |task|=multitask
-from linear_operator.operators import (
-    DiagLinearOperator,
-    InterpolatedLinearOperator,
-    PsdSumLinearOperator,
-    RootLinearOperator,
-)
 
 class Normalizer:
     def __init__(self, low_bound, up_bound):

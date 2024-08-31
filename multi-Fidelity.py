@@ -6,11 +6,13 @@ from pyKriging.samplingplan import samplingplan
 import time
 import os
 from GPy import *
-from opt import *
+from Opt import *
+from Kernels import *
+from gpytorch.lazy import InterpolatedLazyTensor
 
 from gpytorch import kernels, means, models, mlls, settings, likelihoods, constraints, priors
 from gpytorch import distributions as distr
-path5='.\Database\MMGP_database.pth'
+path5='.\Database\multifidelity_database.pth'
 
 path1csv=r".\Database\saveX_gpytorch_multifidelity_multitask.csv"
 path2csv=r".\Database\saveI_gpytorch_multifidelity_multitask.csv"
@@ -45,10 +47,10 @@ UPBound = np.array(UPB).T
 LOWBound = np.array(LOWB).T
 dict = [i for i in range(TestX.shape[0])]
 def save():
+    full_train_y = torch.logit(full_train_y)
     np.savetxt(path1csv, np.array(full_train_x.cpu()),delimiter=',')
     np.savetxt(path2csv, np.array(full_train_i.cpu()),delimiter=',')
     np.savetxt(path3csv, np.array(full_train_y.cpu()),delimiter=',')
-
     np.savetxt(r".\ROM\E2\saveX_gpytorch_multifidelity_multitask %d.csv" % (torch.sum(full_train_i).item()),
             np.array(full_train_x.cpu()),delimiter=',')
     np.savetxt(r".\ROM\E2\saveI_gpytorch_multifidelity_multitask %d.csv" % (torch.sum(full_train_i).item()),
@@ -62,6 +64,7 @@ if os.path.exists(path1csv):
     full_train_i=torch.FloatTensor(np.loadtxt(path2csv,delimiter=','))
     full_train_y=torch.FloatTensor(np.loadtxt(path3csv, delimiter=','))
     full_train_i=torch.unsqueeze(full_train_i,dim=1)
+    full_train_y = torch.sigmoid(full_train_y)
     if os.path.exists(path4csv):
         dict = np.loadtxt(path4csv,  delimiter=',').astype(int).tolist()
 else:
@@ -103,6 +106,7 @@ else:
     full_train_x = torch.cat([train_x1, X]).to(device)
     full_train_i = torch.cat([train_i_task1, train_i_task2]).to(device)
     full_train_y = torch.cat([train_y1, train_y2]).to(device)
+    full_train_y = torch.sigmoid(full_train_y)
     # Construct data2
     np.savetxt(path1csv, np.array(full_train_x.cpu()),delimiter=',')
     np.savetxt(path2csv, np.array(full_train_i.cpu()),delimiter=',')
@@ -159,8 +163,10 @@ for i in range(Episode):
     #save()
     IGD, pop = optIGD(model, likelihood, num_task=num_tasks, testmode=testmode, train_x=full_train_x)
     X, Y = infillGA(model, likelihood, Infillpoints, dict, num_tasks, "EI", device=device, cofactor=cofactor,
-                y_max=[torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 0]).item(), torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 1]).item()], offline=Offline,
+                y_max=[torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 0]).item(), torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 1]).item(), torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 1]).item()
+                       ], offline=Offline,
                 train_x=full_train_x,testmode=testmode,final_population_X=pop,norm=normalizer)
+    Y = torch.sigmoid(Y)
     full_train_x = torch.cat((full_train_x, X), dim=0).to(torch.float32).to(device)
     full_train_i = torch.cat((full_train_i, torch.ones(Infillpoints).unsqueeze(-1)), dim=0).to(torch.float32).to(device)
     full_train_y = torch.cat((full_train_y, Y), dim=0).to(torch.float32).to(device)

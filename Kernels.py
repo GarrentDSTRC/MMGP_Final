@@ -1,6 +1,13 @@
 import torch
 import gpytorch
 from gpytorch.kernels import Kernel
+from linear_operator.operators import (
+    DiagLinearOperator,
+    InterpolatedLinearOperator,
+    PsdSumLinearOperator,
+    RootLinearOperator,
+)
+
 "-----------------------DIY KERNEL-----------------------------------------------"
 class ExactGPModel(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood,mode="M"):
