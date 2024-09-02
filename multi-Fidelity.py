@@ -46,7 +46,7 @@ testmode="CFD"
 UPBound = np.array(UPB).T
 LOWBound = np.array(LOWB).T
 dict = [i for i in range(TestX.shape[0])]
-def save():
+def save(full_train_x,full_train_i,full_train_y):
     full_train_y = torch.logit(full_train_y)
     np.savetxt(path1csv, np.array(full_train_x.cpu()),delimiter=',')
     np.savetxt(path2csv, np.array(full_train_i.cpu()),delimiter=',')
@@ -170,7 +170,7 @@ for i in range(Episode):
     full_train_x = torch.cat((full_train_x, X), dim=0).to(torch.float32).to(device)
     full_train_i = torch.cat((full_train_i, torch.ones(Infillpoints).unsqueeze(-1)), dim=0).to(torch.float32).to(device)
     full_train_y = torch.cat((full_train_y, Y), dim=0).to(torch.float32).to(device)
-    save()
+    save(full_train_x,full_train_i,full_train_y)
     model1 = MultiFidelityGPModel((full_train_x, full_train_i), full_train_y[:, 0], likelihood1).to(device)
     model2 = MultiFidelityGPModel((full_train_x, full_train_i), full_train_y[:, 1], likelihood2).to(device)
     model3 = MultiFidelityGPModel((full_train_x, full_train_i), full_train_y[:, 2], likelihood3).to(device)
