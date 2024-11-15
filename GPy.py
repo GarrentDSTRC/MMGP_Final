@@ -277,24 +277,6 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
     creator.create("FitnessMax", base.Fitness, weights=(1.0,1.0))
     creator.create("Individual", list, fitness=creator.FitnessMax)
 
-    # Convert final population to list of Individuals
-    final_population_individuals = [creator.Individual(x) for x in train_x]
-    if testmode == "experiment_cluster":
-        clustered = replace_last_three_with_nearest_class_tensor(final_population_individuals)
-
-    # Evaluate each individual in the population
-    for i,individual in enumerate(final_population_individuals):
-        # If testmode is "experiment", classify and replace the last three elements
-        if testmode == "experiment_cluster":
-            individual[-3:] = clustered[i,-3:]
-        # Call your evaluateEI function here, replace y_max and cofactor with the actual values
-        individual.fitness.values = evaluateEI(individual,
-                                               model=model,
-                                               likelihood=likelihood,
-                                               y_max=y_max,
-                                               cofactor=cofactor,
-                                               num_task=num_tasks,
-                                               )
     popsize = 600
     cxProb = 0.7
     mutateProb = 0.2
@@ -308,6 +290,17 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
     toolbox.register("mate", tools.cxTwoPoint)
     toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=0.1, indpb=0.1)
     toolbox.register("select", tools.selTournament, tournsize=3)
+
+    # Convert final population to list of Individuals
+    final_population_individuals = [creator.Individual(x) for x in train_x]
+    if testmode == "experiment_cluster":
+        clustered = replace_last_three_with_nearest_class_tensor(final_population_individuals)
+        for i,individual in enumerate(final_population_individuals):
+                individual[-3:] = clustered[i,-3:]
+    fitnessvalues = map(toolbox.evaluate, final_population_individuals)
+    for ind, fit in zip(final_population_individuals, fitnessvalues):
+        ind.fitness.values = fit
+
     # 运行遗传算法
     pop = final_population_individuals
     hof = tools.HallOfFame(32)
@@ -344,12 +337,10 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
             for individual in offspring:
                 clustered = replace_last_three_with_nearest_class_tensor(individual)
                 individual[-3:] = clustered[0, -3:]
-                #individual[:] = clustered.values
 
         # 记录数据-将stats的注册功能应用于pop，并作为字典返回
         record = stats.compile(pop)
         logbook.record(gen=i, **record)
-
         # 合并父代与子代
         pop = pop + offspring
         # 评价族群-更新新族群的适应度
@@ -447,8 +438,10 @@ def evaluateEI(individual,model,likelihood,y_max,cofactor,num_task=2):
     with torch.no_grad(), gpytorch.settings.fast_pred_var():
         for i in range(len(UPB)):
             #ind[i]=individual[i]*(UPB[i]-LOWB[i])+LOWB[i]
-            ind[i]=individual[i]
-        ind=torch.tensor(ind).to(device).to(torch.float32).unsqueeze(0)
+            ind=individual
+        ind=torch.tensor(ind).to(device).to(torch.float32)
+        if ind.ndim==1:
+            ind=ind.unsqueeze(0)
         with gpytorch.settings.cholesky_jitter(1e-0):
             if np.abs(num_task)==2:
                 if num_task==-2:
@@ -486,7 +479,7 @@ def evaluateEI(individual,model,likelihood,y_max,cofactor,num_task=2):
     if np.abs(num_task)==2:
         return  ( EI_one*cofactor[1]+EI_one1*(1-cofactor[1])).item(),(EI_two*cofactor[1]+EI_two1*(1-cofactor[1])).item()
     elif np.abs(num_task)==3:
-        return  ( EI_one*cofactor[1][0]+EI_one1*cofactor[1][1]+EI_one2*cofactor[1][2]).item(),(EI_two*cofactor[1][0]+EI_two1*cofactor[1][1]+EI_two2*cofactor[1][2]).item()
+        return  ( EI_one*cofactor[1][0]+EI_one1*cofactor[1][1]+EI_one2*cofactor[1][2]),(EI_two*cofactor[1][0]+EI_two1*cofactor[1][1]+EI_two2*cofactor[1][2])
 
 
 
