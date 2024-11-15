@@ -14,7 +14,7 @@ int Num = 1;
 String Sp;
 float CT = 0, CL = 0, CP = 0,Eta=0,ct=0,alp=0;
 float y = 0, angle = 0;
-int resolution = 8, xLengths=16, yLengths=16, zoom = 2;//zoom:画幅放大倍数
+int resolution = 64, xLengths=16, yLengths=16, zoom = 2;//zoom:画幅放大倍数
 int picNum = 10;//图片数量
 float tCurr = 0, tStep = .005;
 int count=0;//OL新加入的变量

@@ -13,6 +13,9 @@ from pprint import pprint
 from gpytorch.priors import NormalPrior
 from deap import algorithms, base, creator, tools
 from functools import partial
+from scipy.spatial.distance import cdist
+# Load the new data file without headers
+centroids_df = pd.read_csv('Database\centroids.csv', header=None)
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device("cpu")
 Frame = pd.read_excel('.\ROM\BF_search.xlsx', sheet_name="HL")
@@ -37,6 +40,42 @@ LOWB=[0.1, 0.4, 15, -180, -0.9,-0.9,0,0,10]
 import time
 inittime=time.time()
 ###################num——task   + single fidelity -multifidelity    ### |task|=multitask
+
+centroids_array = centroids_df.to_numpy()
+centroids_tensor = torch.tensor(centroids_array, dtype=torch.float32)
+def replace_last_three_with_nearest_class_tensor(matrix):
+    """
+    将矩阵的每一行最后三个元素替换为最接近的类中心。
+
+    参数:
+    matrix (torch.Tensor): 任意维度的输入张量。
+
+    返回:
+    torch.Tensor: 修改后的张量。
+    """
+    # 确保输入是一个 PyTorch 张量
+    matrix = torch.tensor(matrix, dtype=torch.float32)
+    if len(matrix.shape) == 1:  # 如果输入是一行
+        matrix = matrix.unsqueeze(0)  # 添加一个维度变成 (1, n)
+    # 获取列数
+    n_cols = matrix.shape[1]
+    # 遍历每一行
+    for row in range(matrix.shape[0]):
+        # 处理每一行的最后三个值
+        for col in range(n_cols - 3, n_cols):
+            # 当前需要替换的值
+            value = matrix[row, col]
+
+            # 计算与每个类中心的欧几里得距离
+            distances = torch.norm(centroids_tensor - value, dim=1)
+
+            # 找到距离最小的类中心
+            nearest_centroid = centroids_tensor[torch.argmin(distances)]
+
+            # 替换值为最近的类中心
+            matrix[row, col] = nearest_centroid[col % nearest_centroid.size(0)]
+
+    return matrix
 
 class Normalizer:
     def __init__(self, low_bound, up_bound):
@@ -70,7 +109,7 @@ def findpointOL(X,num_task=1,mode="experiment"):
 #归一化只在这里归一化
 
     last_col = X[:, -1]  # Extract the last column
-    if mode=="experiment" or "CFD":
+    if mode=="experiment" or "CFD" or "experiment_cluster":
         num_p=X.shape[0]
         all_Y=[]
         num_task=np.abs(num_task)
@@ -241,8 +280,14 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
     # Convert final population to list of Individuals
     final_population_individuals = [creator.Individual(x) for x in train_x]
 
+
+
     # Evaluate each individual in the population
-    for individual in final_population_individuals:
+    for i,individual in enumerate(final_population_individuals):
+        # If testmode is "experiment", classify and replace the last three elements
+        if testmode == "experiment_cluster":
+            clustered = replace_last_three_with_nearest_class_tensor(individual)
+            individual[:] = clustered.values
         # Call your evaluateEI function here, replace y_max and cofactor with the actual values
         individual.fitness.values = evaluateEI(individual,
                                                model=model,
@@ -251,9 +296,7 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
                                                cofactor=cofactor,
                                                num_task=num_tasks,
                                                )
-
-################################################
-    popsize = 300
+    popsize = 600
     cxProb = 0.7
     mutateProb = 0.2
     toolbox = base.Toolbox()
@@ -278,7 +321,7 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
                                        verbose=True)
     # algorithms.eaMuPlusLambda(pop, toolbox, mu=100, lambda_=100, cxpb=0.8, mutpb=1.0/NDIM, ngen=100)
     # 计算Pareto前沿集合
-    for i in range(1, 7):
+    for i in range(1, 13):
         fronts = tools.emo.sortLogNondominated(pop, popsize, first_front_only=False)
         # pop, logbook = algorithms.eaSimple(pop, toolbox, cxpb=0.5, mutpb=0.2, ngen=50, stats=stats, halloffame=hof,
         # verbose=True)
@@ -297,6 +340,12 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
         offspring = toolbox.clone(offspring)
         offspring = algorithms.varAnd(offspring, toolbox, cxProb, mutateProb)
 
+        # Evaluate the population
+        if testmode == "experiment_cluster":
+            for individual in offspring:
+                clustered = replace_last_three_with_nearest_class_tensor(individual)
+                individual[:] = clustered.values
+
         # 记录数据-将stats的注册功能应用于pop，并作为字典返回
         record = stats.compile(pop)
         logbook.record(gen=i, **record)
@@ -307,7 +356,7 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
         fitnesses = map(toolbox.evaluate, pop)
         for ind, fit in zip(pop, fitnesses):
             ind.fitness.values = fit
-    print(logbook.stream)
+        print(logbook.stream)
 ################################################
 
     pareto_front_ALL = tools.emo.sortLogNondominated(pop, len(pop), first_front_only=False)
@@ -346,6 +395,7 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
 
         X = torch.tensor(candidates).to(device).to(torch.float32)
         denorm_X=norm.denormalize(X)
+        print("PLAN TO SEARCH",denorm_X)
         POINT,Y=findpointOL(denorm_X,num_task=num_tasks,mode=testmode)
         return X,Y
 

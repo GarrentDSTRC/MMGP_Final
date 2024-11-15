@@ -21,8 +21,8 @@ path4csv=r".\Database\saveTestXdict_gpytorch_multifidelity_multitask.csv"
 #lowfidelity
 #pathx2=r".\ROM\E3\saveX_gpytorch_multi_EI_MS 928.npy"
 #pathy2=r".\ROM\E3\savey_gpytorch_multi_EI_MS 928.npy"
-pathx2=r".\Database\saveX_gpytorch_multi_EI_MS.npy"
-pathy2=r".\Database\savey_gpytorch_multi_EI_MS.npy"
+pathx2=r".\Database\train_x.csv"
+pathy2=r".\Database\train_y.csv"
 
 path1H=r".\Database\saveX_gpytorch_multi_EI_MS_H.npy"
 path2H=r".\Database\savey_gpytorch_multi_EI_MS_H.npy"
@@ -42,12 +42,12 @@ testsample=140
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device( "cpu")
 Offline=0
-testmode="CFD"
+testmode="experiment_cluster"  #"CFD" "experiment"
 UPBound = np.array(UPB).T
 LOWBound = np.array(LOWB).T
 dict = [i for i in range(TestX.shape[0])]
 def save(full_train_x,full_train_i,full_train_y):
-    full_train_y = torch.logit(full_train_y)
+    full_train_y = torch.atanh(full_train_y)
     np.savetxt(path1csv, np.array(full_train_x.cpu()),delimiter=',')
     np.savetxt(path2csv, np.array(full_train_i.cpu()),delimiter=',')
     np.savetxt(path3csv, np.array(full_train_y.cpu()),delimiter=',')
@@ -64,24 +64,23 @@ if os.path.exists(path1csv):
     full_train_i=torch.FloatTensor(np.loadtxt(path2csv,delimiter=','))
     full_train_y=torch.FloatTensor(np.loadtxt(path3csv, delimiter=','))
     full_train_i=torch.unsqueeze(full_train_i,dim=1)
-    full_train_y = torch.sigmoid(full_train_y)
+    full_train_y = torch.tanh(full_train_y)
     if os.path.exists(path4csv):
         dict = np.loadtxt(path4csv,  delimiter=',').astype(int).tolist()
 else:
-    train_x1 = torch.tensor(np.load(pathx2, allow_pickle=True)).to(torch.float32)
-    train_y1 =torch.tensor( np.load(pathy2, allow_pickle=True)).to(torch.float32)
+    train_x1 = torch.tensor(np.loadtxt(pathx2, delimiter=',')).to(torch.float32)
+    train_y1 =torch.tensor( np.loadtxt(pathy2, delimiter=',')).to(torch.float32)
 
     # High fidelity
     sp = samplingplan(num_input)
     X = sp.optimallhc(init_sample)
+    if testmode == "experiment_cluster":
+        X=replace_last_three_with_nearest_class_tensor(X)
     initialDataX = normalizer.denormalize(X)
     #X= LOWBound+X*(UPBound-LOWBound)
     train_x2=np.zeros([init_sample, num_input])
     train_y2 = np.zeros([init_sample,abs(num_tasks)])
     size=len(Frame.iloc[:, 4].to_numpy())
-
-
-
     if Offline == 1:
         for index, value in enumerate(X):
             train_x2[index, :], train_y2[index, :] = findpoint_interpolate(value, Frame, num_tasks=num_tasks)
@@ -106,7 +105,7 @@ else:
     full_train_x = torch.cat([train_x1, X]).to(device)
     full_train_i = torch.cat([train_i_task1, train_i_task2]).to(device)
     full_train_y = torch.cat([train_y1, train_y2]).to(device)
-    full_train_y = torch.sigmoid(full_train_y)
+    full_train_y = torch.tanh(full_train_y)
     # Construct data2
     np.savetxt(path1csv, np.array(full_train_x.cpu()),delimiter=',')
     np.savetxt(path2csv, np.array(full_train_i.cpu()),delimiter=',')
@@ -165,8 +164,8 @@ for i in range(Episode):
     X, Y = infillGA(model, likelihood, Infillpoints, dict, num_tasks, "EI", device=device, cofactor=cofactor,
                 y_max=[torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 0]).item(), torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 1]).item(), torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 1]).item()
                        ], offline=Offline,
-                train_x=full_train_x,testmode=testmode,final_population_X=pop,norm=normalizer)
-    Y = torch.sigmoid(Y)
+                train_x=full_train_x,testmode=testmode,final_population_X=[],norm=normalizer)
+    Y = torch.tanh(Y)
     full_train_x = torch.cat((full_train_x, X), dim=0).to(torch.float32).to(device)
     full_train_i = torch.cat((full_train_i, torch.ones(Infillpoints).unsqueeze(-1)), dim=0).to(torch.float32).to(device)
     full_train_y = torch.cat((full_train_y, Y), dim=0).to(torch.float32).to(device)

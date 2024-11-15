@@ -35,7 +35,7 @@ init_sample = 8*15
 UpB=len(Frame.iloc[:, 0].to_numpy())-1
 LowB=0
 Infillpoints=8*2
-training_iterations = 13#33#5
+training_iterations = 30#33#5
 num_tasks=-3
 num_input=len(UPB)
 Episode=1
@@ -54,7 +54,7 @@ if os.path.exists(path1csv):
     full_train_i=torch.FloatTensor(np.loadtxt(path2csv,delimiter=','))
     full_train_y=torch.FloatTensor(np.loadtxt(path3csv, delimiter=','))
     full_train_i=torch.unsqueeze(full_train_i,dim=1)
-    full_train_y = torch.sigmoid(full_train_y)
+    full_train_y = torch.tanh(full_train_y)
     if os.path.exists(path4csv):
         dict = np.loadtxt(path4csv,  delimiter=',').astype(int).tolist()
 
@@ -156,20 +156,20 @@ from pymoo.util.ref_dirs import get_reference_directions
 ref_dirs = get_reference_directions("das-dennis", 2, n_partitions=12)
 
 # Initialize the algorithm with the last 150 samples from full_train_x
-pop = Population.new("X", full_train_x[-1500:,:].numpy())
+pop = Population.new("X", full_train_x[-1200:,:].numpy())
 #pop.set("F", problem.evaluate(pop.get("X")))
 # Create an instance of the NSGA-II algorithm
-algorithm = NSGA2(pop_size=300, eliminate_duplicates=True,sampling=pop)
+algorithm = NSGA2(pop_size=900, eliminate_duplicates=True,sampling=pop)
 
 # Minimize the problem using the algorithm and the initial population
 res = minimize(problem,
                algorithm,
-               ("n_gen", 15),#70
+               ("n_gen", 13),#70
                seed=1,
 )
 res_F_tensor = torch.tensor(res.F, dtype=torch.float32)
-res_F_logit_tensor = torch.logit(res_F_tensor)
-res.F = res_F_logit_tensor.numpy()  # 转换回 numpy 数组
+res_F_tensor = torch.atanh(res_F_tensor)
+res.F = res_F_tensor.numpy()  # 转换回 numpy 数组
 
 # Get the last population from the result object
 last_pop = res.pop

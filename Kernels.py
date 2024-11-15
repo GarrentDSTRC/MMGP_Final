@@ -43,7 +43,7 @@ class SpectralMixtureGPModel(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood):
         super(SpectralMixtureGPModel, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.ConstantMean()
-        self.covar_module = gpytorch.kernels.SpectralMixtureKernel(num_mixtures=4,ard_num_dims=train_x.shape[1], mixture_weights_constraint=gpytorch.constraints.Interval(-10, 10))
+        self.covar_module = gpytorch.kernels.SpectralMixtureKernel(num_mixtures=8,ard_num_dims=train_x.shape[1], mixture_weights_constraint=gpytorch.constraints.Interval(-10, 10))
         # 设置mixture_weights参数的约束条件为-1到1之间
         self.covar_module.mixture_weights_constraint = gpytorch.constraints.Interval(-10, 10)
         # 初始化mixture_weights参数的值为-0.5

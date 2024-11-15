@@ -54,7 +54,7 @@ if os.path.exists(path1csv):
     full_train_i=torch.FloatTensor(np.loadtxt(path2csv,delimiter=','))
     full_train_y=torch.FloatTensor(np.loadtxt(path3csv, delimiter=','))
     full_train_i=torch.unsqueeze(full_train_i,dim=1)
-    full_train_y = torch.sigmoid(full_train_y)
+    full_train_y = torch.tanh(full_train_y)
 
     last_pop=np.load(pathpop, allow_pickle=True)
     # Get the F and X values from the population
@@ -156,7 +156,7 @@ class InnerProblem(Problem):
 
 class OuterProblem(Problem):
     def __init__(self):
-        super().__init__(n_var=3, n_obj=2, n_constr=0, xu=np.array([0,0,0]), xl=np.array([0,0,0]))
+        super().__init__(n_var=3, n_obj=3, n_constr=0, xu=np.array([0,0,0]), xl=np.array([0,0,0]))
 #,type_var=np.int
     def _evaluate(self, x, out, *args, **kwargs):
         results = []
@@ -248,6 +248,10 @@ algorithm = NSGA2(pop_size=50, eliminate_duplicates=True,sampling=pop_1)
 # Run optimization with callback
 res = minimize(problem, algorithm, termination=("n_gen", 10), callback=callback, seed=1)
 
+res_F_tensor = torch.tensor(res.F, dtype=torch.float32)
+res_F_tensor = torch.atanh(res_F_tensor)
+res.F = res_F_tensor.numpy()  # 转换回 numpy 数组
+
 # Create a 3D scatter plot
 fig = plt.figure(figsize=(10, 7))
 ax = fig.add_subplot(111, projection='3d')
@@ -268,7 +272,7 @@ plt.subplots_adjust(bottom=0.2)
 plt.savefig("3D_pareto_front.pdf", dpi=300)
 
 # Show the plot on screen
-plt.show()
+#plt.show()
 
 
 # Import the pandas library for data manipulation

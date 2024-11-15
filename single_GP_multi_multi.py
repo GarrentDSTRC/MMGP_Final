@@ -168,13 +168,9 @@ if __name__=="__main__":
         save()
         #################test###################
         IGD,pop=optIGD(model, likelihood, num_task=num_tasks, testmode=testmode, train_x=train_x)
-        #with gpytorch.settings.cholesky_jitter(1e-0):
-        #    M=MAE(model,likelihood)
-        #f = open("./MAE.txt", "a", encoding="utf - 8")
-        #f.writelines((str(train_y.shape[0]) + ",", str( M[0]) + ",", str( M[1])+ ",", str(IGD) + "\n"))
-        #f.close()
+
         ##########################################################infill###################
-        X,Y=infillGA(model, likelihood, Infillpoints, dict, num_tasks,"EI", device=device, cofactor=cofactor, y_max = [torch.max(train_y[:, i]).item() for i in range(train_y.size(1))], offline=Offline,train_x=train_x,testmode=testmode,final_population_X=pop,norm=normalizer)
+        X,Y=infillGA(model, likelihood, Infillpoints, dict, num_tasks,"EI", device=device, cofactor=cofactor, y_max = [torch.max(train_y[:, i]).item() for i in range(train_y.size(1))], offline=Offline,train_x=train_x,testmode=testmode,final_population_X=[],norm=normalizer)
         cofactor=UpdateCofactor(model,likelihood,X.to(torch.float32),Y.to(torch.float32),cofactor,torch.max(train_y,dim=0).values-torch.min(train_y,dim=0).values)
         #cofactor=[0.5,0.5]
         print("addpoint",X)

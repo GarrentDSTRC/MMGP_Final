@@ -10,6 +10,12 @@ import gpytorch
 from pymoo.core.population import Population
 global model,likelihood
 from GPy import UPB,LOWB
+import pandas as pd
+# Load the uploaded centroids file
+centroids_path = 'Database/centroids.csv'
+centroids = pd.read_csv(centroids_path, header=None)
+centroids_array = centroids.to_numpy()
+centroids_tensor = torch.tensor(centroids_array, dtype=torch.float32)
 
 def optIGD(mymodel,mylikelihood,num_task=-2,testmode="test_WFG",train_x=[]):
     global model, likelihood
@@ -25,13 +31,13 @@ def optIGD(mymodel,mylikelihood,num_task=-2,testmode="test_WFG",train_x=[]):
     # # Define the reference directions for the Pareto front
     from pymoo.util.ref_dirs import get_reference_directions
     ref_dirs = get_reference_directions("das-dennis", 2, n_partitions=12)
-    pop = Population.new("X", np.concatenate((train_x[:70, :].numpy(), train_x[-230:, :].numpy())))
+    pop = Population.new("X", np.concatenate((train_x[:700, :].numpy(), train_x[-230:, :].numpy())))
     # Create an instance of the NSGA-II algorithm
     algorithm = NSGA2(pop_size=400, eliminate_duplicates=True, sampling=pop)
     # Minimize the problem using the algorithm
     res = minimize(problem,
                    algorithm,
-                   ("n_gen", 40),#70
+                   ("n_gen", 13),#70
                    seed=70,
                    verbose=True)
 
