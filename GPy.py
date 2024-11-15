@@ -292,14 +292,14 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
     toolbox.register("select", tools.selTournament, tournsize=3)
 
     # Convert final population to list of Individuals
-    final_population_individuals = [creator.Individual(x) for x in train_x]
+    final_population_individuals = [creator.Individual(x.numpy()) for x in train_x]
     if testmode == "experiment_cluster":
         clustered = replace_last_three_with_nearest_class_tensor(final_population_individuals)
         for i,individual in enumerate(final_population_individuals):
-                individual[-3:] = clustered[i,-3:]
+                individual[-3:] = clustered[i,-3:].numpy()
     fitnessvalues = map(toolbox.evaluate, final_population_individuals)
     for ind, fit in zip(final_population_individuals, fitnessvalues):
-        ind.fitness.values = fit
+        ind.fitness.values = np.array([x.item() for x in fit])
 
     # 运行遗传算法
     pop = final_population_individuals
@@ -309,7 +309,7 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
     stats.register("min", np.min)
     stats.register("max", np.max)
 
-    pop, logbook = algorithms.eaSimple(pop, toolbox, cxpb=0.5, mutpb=0.2, ngen=1, stats=stats, halloffame=hof,
+    pop, logbook = algorithms.eaSimple(pop, toolbox, cxpb=0.5, mutpb=0.2, ngen=2, stats=stats, halloffame=hof,
                                        verbose=True)
     # algorithms.eaMuPlusLambda(pop, toolbox, mu=100, lambda_=100, cxpb=0.8, mutpb=1.0/NDIM, ngen=100)
     # 计算Pareto前沿集合
@@ -336,7 +336,7 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
         if testmode == "experiment_cluster":
             for individual in offspring:
                 clustered = replace_last_three_with_nearest_class_tensor(individual)
-                individual[-3:] = clustered[0, -3:]
+                individual[-3:] = clustered[0, -3:].numpy()
 
         # 记录数据-将stats的注册功能应用于pop，并作为字典返回
         record = stats.compile(pop)
@@ -346,7 +346,7 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
         # 评价族群-更新新族群的适应度
         fitnesses = map(toolbox.evaluate, pop)
         for ind, fit in zip(pop, fitnesses):
-            ind.fitness.values = fit
+            ind.fitness.values = np.array([x.item() for x in fit])
         print(logbook.stream)
 ################################################
 
@@ -477,7 +477,7 @@ def evaluateEI(individual,model,likelihood,y_max,cofactor,num_task=2):
         EI_two1 = VarS2 * torch.FloatTensor(norm.pdf(((MeanS2 - y_max[1]) / VarS2).cpu().detach())).to(device)
         #eta
     if np.abs(num_task)==2:
-        return  ( EI_one*cofactor[1]+EI_one1*(1-cofactor[1])).item(),(EI_two*cofactor[1]+EI_two1*(1-cofactor[1])).item()
+        return  ( EI_one*cofactor[1]+EI_one1*(1-cofactor[1])),(EI_two*cofactor[1]+EI_two1*(1-cofactor[1]))
     elif np.abs(num_task)==3:
         return  ( EI_one*cofactor[1][0]+EI_one1*cofactor[1][1]+EI_one2*cofactor[1][2]),(EI_two*cofactor[1][0]+EI_two1*cofactor[1][1]+EI_two2*cofactor[1][2])
 
