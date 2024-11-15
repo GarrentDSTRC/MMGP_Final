@@ -279,15 +279,14 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
 
     # Convert final population to list of Individuals
     final_population_individuals = [creator.Individual(x) for x in train_x]
-
-
+    if testmode == "experiment_cluster":
+        clustered = replace_last_three_with_nearest_class_tensor(final_population_individuals)
 
     # Evaluate each individual in the population
     for i,individual in enumerate(final_population_individuals):
         # If testmode is "experiment", classify and replace the last three elements
         if testmode == "experiment_cluster":
-            clustered = replace_last_three_with_nearest_class_tensor(individual)
-            individual[:] = clustered.values
+            individual[-3:] = clustered[i,-3:]
         # Call your evaluateEI function here, replace y_max and cofactor with the actual values
         individual.fitness.values = evaluateEI(individual,
                                                model=model,
@@ -344,7 +343,8 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
         if testmode == "experiment_cluster":
             for individual in offspring:
                 clustered = replace_last_three_with_nearest_class_tensor(individual)
-                individual[:] = clustered.values
+                individual[-3:] = clustered[0, -3:]
+                #individual[:] = clustered.values
 
         # 记录数据-将stats的注册功能应用于pop，并作为字典返回
         record = stats.compile(pop)
