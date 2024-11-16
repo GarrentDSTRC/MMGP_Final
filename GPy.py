@@ -317,7 +317,7 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
     #pop, logbook = algorithms.eaSimple(pop, toolbox, cxpb=0.5, mutpb=0.2, ngen=1, stats=stats, halloffame=hof,
                                        #verbose=True)
     # algorithms.eaMuPlusLambda(pop, toolbox, mu=100, lambda_=100, cxpb=0.8, mutpb=1.0/NDIM, ngen=100)
-    # 计算Pareto前沿集合
+    logbook = tools.Logbook()
     for i in range(1, 13):
         fronts = tools.emo.sortLogNondominated(pop, popsize, first_front_only=False)
         # pop, logbook = algorithms.eaSimple(pop, toolbox, cxpb=0.5, mutpb=0.2, ngen=50, stats=stats, halloffame=hof,
@@ -360,7 +360,7 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
         # fitnesses = map(toolbox.evaluate, pop)
         # for ind, fit in zip(pop, fitnesses):
         #     ind.fitness.values = np.array([x.item() for x in fit])
-        print(logbook.stream)
+        #print(logbook.stream)
 ################################################
 
     pareto_front_ALL = tools.emo.sortLogNondominated(pop, len(pop), first_front_only=False)
