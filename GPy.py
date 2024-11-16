@@ -117,7 +117,7 @@ def findpointOL(X,num_task=1,mode="experiment"):
             for j in range(8):
                 generate_waveform(X[i*8+j,0:6].tolist(),r'.\MMGP_OL%d'%(j%8),mode)
                 np.savetxt(r'.\MMGP_OL%d\flag.txt'%(j%8), np.array([0]), delimiter=',', fmt='%d')
-                fill=np.array([[0,0,0,0,X[i*8+j,6],X[i*8+j,7],X[i*8+j,8],1000 ]])
+                fill=np.array([[0,0,0,0,X[i*8+j,6],X[i*8+j,7],X[i*8+j,8],10000 ]])
                 np.savetxt(r'.\MMGP_OL%d\dataX.txt' % (j % 8), fill, delimiter=',', fmt='%.2f')
             for j in range(8):
                 flag=np.loadtxt(r'.\MMGP_OL%d\flag.txt'%(j%8), delimiter=",", dtype="int")
@@ -297,9 +297,14 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
         clustered = replace_last_three_with_nearest_class_tensor(final_population_individuals)
         for i,individual in enumerate(final_population_individuals):
                 individual[-3:] = clustered[i,-3:].numpy()
-    fitnessvalues = map(toolbox.evaluate, final_population_individuals)
-    for ind, fit in zip(final_population_individuals, fitnessvalues):
-        ind.fitness.values = np.array([x.item() for x in fit])
+    fitnessvalues = evaluateEI(final_population_individuals,
+                                           model=model,
+                                           likelihood=likelihood,
+                                           y_max=y_max,
+                                           cofactor=cofactor,
+                                           num_task=num_tasks)
+    for ind, fit0,fit1 in zip(final_population_individuals, fitnessvalues[0],fitnessvalues[1]):
+        ind.fitness.values = (fit0.item(),fit1.item())
 
     # 运行遗传算法
     pop = final_population_individuals
@@ -309,8 +314,8 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
     stats.register("min", np.min)
     stats.register("max", np.max)
 
-    pop, logbook = algorithms.eaSimple(pop, toolbox, cxpb=0.5, mutpb=0.2, ngen=2, stats=stats, halloffame=hof,
-                                       verbose=True)
+    #pop, logbook = algorithms.eaSimple(pop, toolbox, cxpb=0.5, mutpb=0.2, ngen=1, stats=stats, halloffame=hof,
+                                       #verbose=True)
     # algorithms.eaMuPlusLambda(pop, toolbox, mu=100, lambda_=100, cxpb=0.8, mutpb=1.0/NDIM, ngen=100)
     # 计算Pareto前沿集合
     for i in range(1, 13):
@@ -344,9 +349,17 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
         # 合并父代与子代
         pop = pop + offspring
         # 评价族群-更新新族群的适应度
-        fitnesses = map(toolbox.evaluate, pop)
-        for ind, fit in zip(pop, fitnesses):
-            ind.fitness.values = np.array([x.item() for x in fit])
+        fitnessvalues = evaluateEI(pop,
+                                   model=model,
+                                   likelihood=likelihood,
+                                   y_max=y_max,
+                                   cofactor=cofactor,
+                                   num_task=num_tasks)
+        for ind, fit0, fit1 in zip(pop, fitnessvalues[0], fitnessvalues[1]):
+            ind.fitness.values = (fit0.item(), fit1.item())
+        # fitnesses = map(toolbox.evaluate, pop)
+        # for ind, fit in zip(pop, fitnesses):
+        #     ind.fitness.values = np.array([x.item() for x in fit])
         print(logbook.stream)
 ################################################
 
