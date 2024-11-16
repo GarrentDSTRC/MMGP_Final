@@ -61,19 +61,14 @@ def replace_last_three_with_nearest_class_tensor(matrix):
     n_cols = matrix.shape[1]
     # 遍历每一行
     for row in range(matrix.shape[0]):
-        # 处理每一行的最后三个值
-        for col in range(n_cols - 3, n_cols):
-            # 当前需要替换的值
-            value = matrix[row, col]
-
-            # 计算与每个类中心的欧几里得距离
-            distances = torch.norm(centroids_tensor - value, dim=1)
-
-            # 找到距离最小的类中心
-            nearest_centroid = centroids_tensor[torch.argmin(distances)]
-
-            # 替换值为最近的类中心
-            matrix[row, col] = nearest_centroid[col % nearest_centroid.size(0)]
+        # 提取当前行的最后三个元素
+        last_three = matrix[row, -3:]
+        # 计算与每个类中心的欧几里得距离
+        distances = torch.norm(centroids_tensor - last_three, dim=1)
+        # 找到距离最小的类中心
+        nearest_centroid = centroids_tensor[torch.argmin(distances)]
+        # 替换值为最近的类中心
+        matrix[row, -3:] = nearest_centroid
 
     return matrix
 
@@ -337,11 +332,7 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
         offspring = toolbox.clone(offspring)
         offspring = algorithms.varAnd(offspring, toolbox, cxProb, mutateProb)
 
-        # Evaluate the population
-        if testmode == "experiment_cluster":
-            for individual in offspring:
-                clustered = replace_last_three_with_nearest_class_tensor(individual)
-                individual[-3:] = clustered[0, -3:].numpy()
+
 
         # 记录数据-将stats的注册功能应用于pop，并作为字典返回
         record = stats.compile(pop)
@@ -349,6 +340,10 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
         # 合并父代与子代
         pop = pop + offspring
         # 评价族群-更新新族群的适应度
+        if testmode == "experiment_cluster":
+            for individual in pop:
+                clustered = replace_last_three_with_nearest_class_tensor(individual)
+                individual[-3:] = clustered[0, -3:].numpy()
         fitnessvalues = evaluateEI(pop,
                                    model=model,
                                    likelihood=likelihood,
