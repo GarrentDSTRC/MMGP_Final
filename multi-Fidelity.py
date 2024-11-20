@@ -33,10 +33,10 @@ init_sample = 8*15
 UpB=len(Frame.iloc[:, 0].to_numpy())-1
 LowB=0
 Infillpoints=8*2
-training_iterations = 2#33#5
+training_iterations = 13#33#5
 num_tasks=-3
 num_input=len(UPB)
-Episode=3
+Episode=13
 LowSample=1800
 testsample=140
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -48,17 +48,17 @@ LOWBound = np.array(LOWB).T
 dict = [i for i in range(TestX.shape[0])]
 def save(full_train_x,full_train_i,full_train_y):
     full_train_y = torch.atanh(full_train_y)
-    np.savetxt(path1csv, np.array(full_train_x.cpu()),delimiter=',')
-    np.savetxt(path2csv, np.array(full_train_i.cpu()),delimiter=',')
+    np.savetxt(path1csv, full_train_x.cpu().numpy(),delimiter=',')
+    np.savetxt(path2csv, full_train_i.cpu().numpy(),delimiter=',')
     np.savetxt(path3csv, np.array(full_train_y.cpu()),delimiter=',')
     np.savetxt(r".\ROM\E2\saveX_gpytorch_multifidelity_multitask %d.csv" % (torch.sum(full_train_i).item()),
-            np.array(full_train_x.cpu()),delimiter=',')
+            full_train_x.cpu().numpy(),delimiter=',')
     np.savetxt(r".\ROM\E2\saveI_gpytorch_multifidelity_multitask %d.csv" % (torch.sum(full_train_i).item()),
-            np.array(full_train_i.cpu()),delimiter=',')
+            full_train_i.cpu().numpy(),delimiter=',')
     np.savetxt(r".\ROM\E2\saveY_gpytorch_multifidelity_multitask %d.csv" % (torch.sum(full_train_i).item()),
-            np.array(full_train_y.cpu()),delimiter=',')
+            full_train_y.cpu().numpy(),delimiter=',')
 
-    np.savetxt(r'.\Database\train_x.csv', np.array(full_train_x.cpu()), delimiter=',')
+    np.savetxt(r'.\Database\train_x.csv', full_train_x.cpu().numpy(), delimiter=',')
 if os.path.exists(path1csv):
     full_train_x=torch.FloatTensor(np.loadtxt(path1csv, delimiter=','))
     full_train_i=torch.FloatTensor(np.loadtxt(path2csv,delimiter=','))
@@ -76,6 +76,7 @@ else:
     X = sp.optimallhc(init_sample)
     if testmode == "experiment_cluster":
         X=replace_last_three_with_nearest_class_tensor(X)
+    print(X)
     initialDataX = normalizer.denormalize(X)
     #X= LOWBound+X*(UPBound-LOWBound)
     train_x2=np.zeros([init_sample, num_input])
@@ -105,12 +106,12 @@ else:
     full_train_x = torch.cat([train_x1, X]).to(device)
     full_train_i = torch.cat([train_i_task1, train_i_task2]).to(device)
     full_train_y = torch.cat([train_y1, train_y2]).to(device)
-    full_train_y = torch.tanh(full_train_y)
     # Construct data2
     np.savetxt(path1csv, np.array(full_train_x.cpu()),delimiter=',')
     np.savetxt(path2csv, np.array(full_train_i.cpu()),delimiter=',')
     np.savetxt(path3csv, np.array(full_train_y.cpu()),delimiter=',')
-
+    full_train_y = torch.tanh(full_train_y)
+    
 # Here we have two iterms that we're passing in as train_inputs
 likelihood1 = gpytorch.likelihoods.GaussianLikelihood().to(device)
 #50: 0:2565
@@ -165,10 +166,10 @@ for i in range(Episode):
                 y_max=[torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 0]).item(), torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 1]).item(), torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 1]).item()
                        ], offline=Offline,
                 train_x=full_train_x,testmode=testmode,final_population_X=[],norm=normalizer)
-    Y = torch.tanh(Y)
+    Y2 = torch.tanh(Y)
     full_train_x = torch.cat((full_train_x, X), dim=0).to(torch.float32).to(device)
     full_train_i = torch.cat((full_train_i, torch.ones(Infillpoints).unsqueeze(-1)), dim=0).to(torch.float32).to(device)
-    full_train_y = torch.cat((full_train_y, Y), dim=0).to(torch.float32).to(device)
+    full_train_y = torch.cat((full_train_y, Y2), dim=0).to(torch.float32).to(device)
     save(full_train_x,full_train_i,full_train_y)
     model1 = MultiFidelityGPModel((full_train_x, full_train_i), full_train_y[:, 0], likelihood1).to(device)
     model2 = MultiFidelityGPModel((full_train_x, full_train_i), full_train_y[:, 1], likelihood2).to(device)
