@@ -48,13 +48,14 @@ testmode="CFD"
 UPBound = np.array(UPB).T
 LOWBound = np.array(LOWB).T
 dict = [i for i in range(TestX.shape[0])]
-
+GPscale=3
+GPscale2=3
 if os.path.exists(path1csv):
     full_train_x=torch.FloatTensor(np.loadtxt(path1csv, delimiter=','))
     full_train_i=torch.FloatTensor(np.loadtxt(path2csv,delimiter=','))
     full_train_y=torch.FloatTensor(np.loadtxt(path3csv, delimiter=','))
     full_train_i=torch.unsqueeze(full_train_i,dim=1)
-    full_train_y = torch.tanh(full_train_y)
+    full_train_y =GPscale* torch.tanh(full_train_y/GPscale2)
     if os.path.exists(path4csv):
         dict = np.loadtxt(path4csv,  delimiter=',').astype(int).tolist()
 
@@ -92,14 +93,15 @@ for i in range(Episode):
         state_dict = torch.load(path5)
         model.load_state_dict(state_dict)
     else:
-        for j in range(training_iterations):
-            optimizer.zero_grad()
-            output = model(*model.train_inputs)
-            loss = -mll(output, model.train_targets)
-            loss.backward(retain_graph=True)
-            print('Iter %d/%d - Loss: %.3f' % (j + 1,training_iterations, loss.item()))
-            optimizer.step()
-        torch.save(model.state_dict(), path5)
+        pass
+    # for j in range(training_iterations):
+    #     optimizer.zero_grad()
+    #     output = model(*model.train_inputs)
+    #     loss = -mll(output, model.train_targets)
+    #     loss.backward(retain_graph=True)
+    #     print('Iter %d/%d - Loss: %.3f' % (j + 1,training_iterations, loss.item()))
+    #     optimizer.step()
+    # torch.save(model.state_dict(), path5)
 model.eval()
 likelihood.eval()
 
@@ -156,9 +158,26 @@ from pymoo.util.ref_dirs import get_reference_directions
 ref_dirs = get_reference_directions("das-dennis", 2, n_partitions=12)
 
 # Initialize the algorithm with the last 150 samples from full_train_x
-pop = Population.new("X", full_train_x[-1200:,:].numpy())
+pop = Population.new("X", full_train_x[-200:,:].numpy())
 #pop.set("F", problem.evaluate(pop.get("X")))
 # Create an instance of the NSGA-II algorithm
+
+x=[[0.829999983,0.419999987,0.899999976,0.970000029,0.589999974,0.540000021,0.699999988,0.379999995,0.899999976],
+[0.860000014,0.99000001,0.529999971,0.430000007,0.899999976,0.99000001,0.699999988,0.379999995,0.899999976],
+[0.860000014,0.920000017,0.079999998,0.99000001,0.899999976,0.99000001,0.699999988,0.379999995,0.899999976],
+[0.829999983,0.419999987,0.899999976,0.970000029,0.5,0.5,0.699999988,0.379999995,0.899999976],
+[0.860000014,0.99000001,0.529999971,0.430000007,0.5,0.5,0.699999988,0.379999995,0.899999976],
+[0.860000014,0.920000017,0.079999998,0.99000001,0.5,0.5,0.699999988,0.379999995,0.899999976],
+   ]
+x=torch.tensor(x)
+with torch.no_grad(), gpytorch.settings.fast_pred_var():
+    observed_pred_yH = likelihood(*model((x, full_train_i[-6:,:]), (x, full_train_i[-6:,:]), (x, full_train_i[-6:,:])))
+    observed_pred_yHC =  torch.atanh(observed_pred_yH[0].mean/GPscale) *GPscale2 # ct high
+    observed_pred_yHL =  torch.atanh(observed_pred_yH[1].mean/GPscale) *GPscale2 # CL high
+    observed_pred_yHE =  torch.atanh(observed_pred_yH[2].mean/GPscale) *GPscale2 # eta high
+combined_matrix = torch.stack([observed_pred_yHC, observed_pred_yHL, observed_pred_yHE]).T
+print("combined_matrix",combined_matrix)
+
 algorithm = NSGA2(pop_size=900, eliminate_duplicates=True,sampling=pop)
 
 # Minimize the problem using the algorithm and the initial population
@@ -168,7 +187,7 @@ res = minimize(problem,
                seed=1,
 )
 res_F_tensor = torch.tensor(res.F, dtype=torch.float32)
-res_F_tensor = torch.atanh(res_F_tensor)
+res_F_tensor = torch.atanh(res_F_tensor/GPscale)*GPscale2
 res.F = res_F_tensor.numpy()  # 转换回 numpy 数组
 
 # Get the last population from the result object
@@ -216,7 +235,7 @@ pf = res.opt
 
 # Get the decision variables and objective values of the Pareto front solutions
 X = pf.get("X")
-F = -pf.get("F")
+F = np.arctan(pf.get("F")/-GPscale)*GPscale2
 
 # Create a pandas dataframe with the decision variables and objective values
 df = pd.DataFrame(np.hstack([X, F]), columns=["st",	"ad","theta","phi","alpha1","alpha2","m","p","t", "ct", "cl","eta"])

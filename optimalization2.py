@@ -28,7 +28,8 @@ pathy2=r".\Database\savey_gpytorch_multi_EI_MS.npy"
 
 path1H=r".\Database\saveX_gpytorch_multi_EI_MS_H.npy"
 path2H=r".\Database\savey_gpytorch_multi_EI_MS_H.npy"
-
+centroids_df = pd.read_csv('Database\centroids.csv', header=None)
+centroids_array = centroids_df.to_numpy()
 # We make an nxn grid of training points spaced every 1/(n-1) on [0,1]x[0,1]
 # n = 250
 init_sample = 8*15
@@ -44,17 +45,19 @@ testsample=140
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device( "cpu")
 Offline=0
+BiGA=0
 testmode="CFD"
 UPBound = np.array(UPB).T
 LOWBound = np.array(LOWB).T
 dict = [i for i in range(TestX.shape[0])]
-
+GPscale=3
+GPscale2=3
 if os.path.exists(path1csv):
     full_train_x=torch.FloatTensor(np.loadtxt(path1csv, delimiter=','))
     full_train_i=torch.FloatTensor(np.loadtxt(path2csv,delimiter=','))
     full_train_y=torch.FloatTensor(np.loadtxt(path3csv, delimiter=','))
     full_train_i=torch.unsqueeze(full_train_i,dim=1)
-    full_train_y = torch.tanh(full_train_y)
+    full_train_y =GPscale* torch.tanh(full_train_y/GPscale2)
 
     last_pop=np.load(pathpop, allow_pickle=True)
     # Get the F and X values from the population
@@ -146,7 +149,7 @@ class InnerProblem(Problem):
             observed_pred_yHL = - np.array(observed_pred_yH[1].mean.tolist()) # CL high
             observed_pred_yHE = - np.array(observed_pred_yH[2].mean.tolist())  # eta high
         N=np.array([observed_pred_yHC,observed_pred_yHL,observed_pred_yHE]).T
-        results = np.hstack((test_x.numpy(), N))
+        results = np.hstack((test_x.numpy(),GPscale2*np.arctan(N/-GPscale)))
         df = pd.DataFrame(results)
         # Incrementally write to the CSV file
         df.to_csv(self.csv_file_path, mode='a', header=not pd.io.common.file_exists(self.csv_file_path), index=False)
@@ -165,9 +168,9 @@ class OuterProblem(Problem):
         for variables in x:
             i=i+1
             problem = InnerProblem(variables)
-            pop_2 = Population.new("X", pop[:, :6].numpy())
+            pop_2 = Population.new("X", pop[-1000:, :6].numpy())
             algorithm = NSGA2( pop_size=1000, eliminate_duplicates=True,sampling=pop_2)
-            res = minimize(problem, algorithm, termination=("n_gen", 15),seed=1)
+            res = minimize(problem, algorithm, termination=("n_gen", 45),seed=1)
             max_values = np.min(res.F, axis=0)  # Get the maximum value for each objective
             print(i,max_values)
             results.append(max_values)
@@ -246,17 +249,29 @@ problem = OuterProblem()
 pop_1 = Population.new("X", np.concatenate((pop[0:3,6:].numpy(), pop[15:80, 6:].numpy())))
 algorithm = NSGA2(pop_size=50, eliminate_duplicates=True,sampling=pop_1)
 # Run optimization with callback
-res = minimize(problem, algorithm, termination=("n_gen", 10), callback=callback, seed=1)
-
-res_F_tensor = torch.tensor(res.F, dtype=torch.float32)
-res_F_tensor = torch.atanh(res_F_tensor)
-res.F = res_F_tensor.numpy()  # 转换回 numpy 数组
+if BiGA:
+    res = minimize(problem, algorithm, termination=("n_gen", 10), callback=callback, seed=1)
+    res_F_tensor = torch.tensor(res.F, dtype=torch.float32)
+    res_F_tensor = torch.atanh(res_F_tensor)
+    results= res_F_tensor.numpy()  # 转换回 numpy 数组
+else:
+    results=[]
+    i=0
+    for variables in centroids_array:
+        i = i + 1
+        problem = InnerProblem(variables)
+        pop_2 = Population.new("X", full_train_x[:, :6].numpy())
+        algorithm = NSGA2(pop_size=1000, eliminate_duplicates=True, sampling=pop_2)
+        res = minimize(problem, algorithm, termination=("n_gen", 15), seed=1)
+        max_values = np.min(res.F, axis=0)  # Get the maximum value for each objective
+        print(i, GPscale2*np.arctan(max_values/-GPscale))
+        results.append(max_values)
 
 # Create a 3D scatter plot
 fig = plt.figure(figsize=(10, 7))
 ax = fig.add_subplot(111, projection='3d')
 # Scatter plot with the third dimension added
-ax.scatter(-1*res.F[:, 0], -1*res.F[:, 1], -1*res.F[:, 2], c="blue", marker="o", s=20)
+ax.scatter(-1*results[:, 0], -1*results[:, 1], -1*results[:, 2], c="blue", marker="o", s=20)
 # Setting labels and title
 ax.set_xlabel("f1", fontsize=22, fontfamily='Times New Roman')
 ax.set_ylabel("f2", fontsize=22, rotation=0, fontfamily='Times New Roman')

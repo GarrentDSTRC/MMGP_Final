@@ -47,7 +47,7 @@ UPBound = np.array(UPB).T
 LOWBound = np.array(LOWB).T
 dict = [i for i in range(TestX.shape[0])]
 def save(full_train_x,full_train_i,full_train_y):
-    full_train_y = torch.atanh(full_train_y)
+    full_train_y = torch.atanh(full_train_y/10)
     np.savetxt(path1csv, full_train_x.cpu().numpy(),delimiter=',')
     np.savetxt(path2csv, full_train_i.cpu().numpy(),delimiter=',')
     np.savetxt(path3csv, np.array(full_train_y.cpu()),delimiter=',')
@@ -64,7 +64,7 @@ if os.path.exists(path1csv):
     full_train_i=torch.FloatTensor(np.loadtxt(path2csv,delimiter=','))
     full_train_y=torch.FloatTensor(np.loadtxt(path3csv, delimiter=','))
     full_train_i=torch.unsqueeze(full_train_i,dim=1)
-    full_train_y = torch.tanh(full_train_y)
+    full_train_y = 10*torch.tanh(full_train_y)
     if os.path.exists(path4csv):
         dict = np.loadtxt(path4csv,  delimiter=',').astype(int).tolist()
 else:
@@ -110,8 +110,8 @@ else:
     np.savetxt(path1csv, np.array(full_train_x.cpu()),delimiter=',')
     np.savetxt(path2csv, np.array(full_train_i.cpu()),delimiter=',')
     np.savetxt(path3csv, np.array(full_train_y.cpu()),delimiter=',')
-    full_train_y = torch.tanh(full_train_y)
-    
+    full_train_y =10* torch.tanh(full_train_y)
+
 # Here we have two iterms that we're passing in as train_inputs
 likelihood1 = gpytorch.likelihoods.GaussianLikelihood().to(device)
 #50: 0:2565
@@ -145,7 +145,7 @@ likelihood.train()
 # Use the adam optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=0.1)  # Includes GaussianLikelihood parameters
 
-cofactor = [0.5, [0.3, 0.3, 0.3]]
+cofactor = [0.5, [0.03, 0.03, 0.9]]
 for i in range(Episode):
     print(  "Episode%d-point %d : %d "%(i, torch.sum(full_train_i).item(),len(full_train_i)-torch.sum(full_train_i).item())   )
     if os.path.exists(path5):
@@ -162,11 +162,12 @@ for i in range(Episode):
     torch.save(model.state_dict(), path5)
     #save()
     IGD, pop = optIGD(model, likelihood, num_task=num_tasks, testmode=testmode, train_x=full_train_x)
+    cofactor = [0.5, [0.03, 0.03, 0.9]]
     X, Y = infillGA(model, likelihood, Infillpoints, dict, num_tasks, "EI", device=device, cofactor=cofactor,
                 y_max=[torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 0]).item(), torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 1]).item(), torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 1]).item()
                        ], offline=Offline,
                 train_x=full_train_x,testmode=testmode,final_population_X=[],norm=normalizer)
-    Y2 = torch.tanh(Y)
+    Y2 =10* torch.tanh(Y)
     full_train_x = torch.cat((full_train_x, X), dim=0).to(torch.float32).to(device)
     full_train_i = torch.cat((full_train_i, torch.ones(Infillpoints).unsqueeze(-1)), dim=0).to(torch.float32).to(device)
     full_train_y = torch.cat((full_train_y, Y2), dim=0).to(torch.float32).to(device)

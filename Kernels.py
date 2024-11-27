@@ -8,6 +8,19 @@ from linear_operator.operators import (
     RootLinearOperator,
 )
 
+class LargeFeatureExtractor(torch.nn.Sequential):
+    def __init__(self,dim1,dim2):
+        super(LargeFeatureExtractor, self).__init__()
+        self.add_module('linear1', torch.nn.Linear(dim1, 100))
+        self.add_module('relu1', torch.nn.ReLU())
+        self.add_module('linear2', torch.nn.Linear(100, 50))
+        self.add_module('relu2', torch.nn.ReLU())
+        self.add_module('linear3', torch.nn.Linear(50, dim2))
+        # self.add_module('relu3', torch.nn.ReLU())
+        # self.add_module('linear4', torch.nn.Linear(5, 7))
+
+
+
 "-----------------------DIY KERNEL-----------------------------------------------"
 class ExactGPModel(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood,mode="M"):
@@ -162,17 +175,23 @@ class MultiFidelityGPModel(gpytorch.models.ExactGP):
         super(MultiFidelityGPModel, self).__init__(train_x, train_y, likelihood)
 
         self.mean_module = gpytorch.means.ConstantMean()
+        ###############deep kernel
+        dim2=5
+        self.feature_extractor = LargeFeatureExtractor(int(train_x[0].shape[1]),dim2)
+        # This module will scale the NN features so that they're nice values
+        self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(-1., 1.)
+        ###############deep kernel
 
-        # self.covar_module1 = gpytorch.kernels.ScaleKernel(
-        #         gpytorch.kernels.MaternKernel()
-        #     )
-        # self.covar_module2 = gpytorch.kernels.ScaleKernel(
-        #         gpytorch.kernels.MaternKernel()
-        #     )
-        self.covar_module1 =  gpytorch.kernels.SpectralMixtureKernel(num_mixtures=4,ard_num_dims=int(train_x[0].shape[1]))
-        self.covar_module1.initialize_from_data(train_x[0], train_y)
-        self.covar_module2 =  gpytorch.kernels.SpectralMixtureKernel(num_mixtures=4,ard_num_dims=int(train_x[0].shape[1]))
-        self.covar_module2.initialize_from_data(train_x[0], train_y)
+        self.covar_module1 = gpytorch.kernels.ScaleKernel(
+                gpytorch.kernels.RBFKernel()
+            )+gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel())
+        self.covar_module2 = gpytorch.kernels.ScaleKernel(
+                gpytorch.kernels.RBFKernel())+gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel())
+
+        # self.covar_module1 =  gpytorch.kernels.SpectralMixtureKernel(num_mixtures=3,ard_num_dims=dim2)
+        # # self.covar_module1.initialize_from_data(train_x[0], train_y)
+        # self.covar_module2 =  gpytorch.kernels.SpectralMixtureKernel(num_mixtures=3,ard_num_dims=dim2)
+        # #self.covar_module2.initialize_from_data(train_x[0], train_y)
 
         # We learn an IndexKernel for 2 tasks
         # (so we'll actually learn 2x2=4 tasks with correlations)
@@ -180,6 +199,8 @@ class MultiFidelityGPModel(gpytorch.models.ExactGP):
         self.task_covar_module1 = TwoFidelityIndexKernel(num_tasks=2, rank=1)
         self.task_covar_module2 = TwoFidelityIndexKernel(num_tasks=2, rank=1,
                                                          includeParams=False)  # , batch_shape=(train_y.shape[0],1,1))
+
+
         #self.task_covar_module1 = gpytorch.kernels.IndexKernel(num_tasks=2, rank=1)
 
     #         print(self.covar_module1.outputscale.item())
@@ -191,18 +212,20 @@ class MultiFidelityGPModel(gpytorch.models.ExactGP):
     # print(f"Initial value : Covar 2, lengthscale {self.covar_module2.base_kernel.lengthscale.item()}, prefactor {self.covar_module2.outputscale.item()}")
 
     def forward(self, x, i):
-        mean_x = self.mean_module(x)
+        ###############deep kernel
+        projected_x = self.feature_extractor(x)
+        x = self.scale_to_bounds(projected_x)  # Make the NN values "nice"
+        ###############deep kernel
 
+        mean_x = self.mean_module(x)
         # Get input-input covariance
         covar1_x = self.covar_module1(x)
         # Get task-task covariance
         covar1_i = self.task_covar_module1(i)
-
         # Get input-input covariance
         covar2_x = self.covar_module2(x)
         # Get task-task covariance
         covar2_i = self.task_covar_module2(i)
-
         # Multiply the two together to get the covariance we want
         covar1 = covar1_x.mul(covar1_i)
         covar2 = covar2_x.mul(covar2_i)
