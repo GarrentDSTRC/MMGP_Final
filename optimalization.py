@@ -158,7 +158,7 @@ from pymoo.util.ref_dirs import get_reference_directions
 ref_dirs = get_reference_directions("das-dennis", 2, n_partitions=12)
 
 # Initialize the algorithm with the last 150 samples from full_train_x
-pop = Population.new("X", full_train_x[-200:,:].numpy())
+pop = Population.new("X", full_train_x[:,:].numpy())
 #pop.set("F", problem.evaluate(pop.get("X")))
 # Create an instance of the NSGA-II algorithm
 
@@ -178,16 +178,16 @@ with torch.no_grad(), gpytorch.settings.fast_pred_var():
 combined_matrix = torch.stack([observed_pred_yHC, observed_pred_yHL, observed_pred_yHE]).T
 print("combined_matrix",combined_matrix)
 
-algorithm = NSGA2(pop_size=900, eliminate_duplicates=True,sampling=pop)
+algorithm = NSGA2(pop_size=1300, eliminate_duplicates=True,sampling=pop)
 
 # Minimize the problem using the algorithm and the initial population
 res = minimize(problem,
                algorithm,
-               ("n_gen", 13),#70
+               ("n_gen", 31),#70
                seed=1,
 )
 res_F_tensor = torch.tensor(res.F, dtype=torch.float32)
-res_F_tensor = torch.atanh(res_F_tensor/GPscale)*GPscale2
+res_F_tensor = -torch.atanh(res_F_tensor/GPscale)*GPscale2
 res.F = res_F_tensor.numpy()  # 转换回 numpy 数组
 
 # Get the last population from the result object
@@ -205,12 +205,13 @@ fig = plt.figure()  # 创建一个图形对象
 ax = fig.add_subplot(111, projection='3d')  # 添加一个三维子图
 
 # 绘制三维散点图
-ax.scatter(-1*res.F[:, 0], -1*res.F[:, 1], -1*res.F[:, 2], c="blue", marker="o", s=20)
+ax.scatter(res.F[:, 0], res.F[:, 1], res.F[:, 2], c="blue", marker="o", s=20)
 
-# 设置坐标轴标签
-ax.set_xlabel('ct', fontsize=22, fontfamily='Times New Roman')
-ax.set_ylabel('cl', fontsize=22, fontfamily='Times New Roman')
-ax.set_zlabel('η', fontsize=22, fontfamily='Times New Roman')  # 假设第三个维度是 η
+# 设置坐标轴标签，使用LaTeX格式
+ax.set_xlabel(r'$C_T$', fontsize=22, fontfamily='Times New Roman')
+ax.set_ylabel(r'$C_L$', fontsize=22, fontfamily='Times New Roman')
+ax.set_zlabel(r'$\eta$', fontsize=22, fontfamily='Times New Roman')  # 假设第三个维度是 η
+
 
 # 设置坐标轴刻度字体大小
 ax.tick_params(axis='both', which='major', labelsize=14)
@@ -222,8 +223,9 @@ plt.rc('font', family='Times New Roman')
 plt.subplots_adjust(left=0.15, bottom=0.15)
 
 # 保存图形为高分辨率的 PDF 文件
-plt.savefig("pareto_front_3d.pdf", dpi=300)
 
+plt.savefig("pareto_front_3d.pdf", dpi=300)
+plt.show()
 
 
 
@@ -235,7 +237,7 @@ pf = res.opt
 
 # Get the decision variables and objective values of the Pareto front solutions
 X = pf.get("X")
-F = np.arctan(pf.get("F")/-GPscale)*GPscale2
+F = res.F
 
 # Create a pandas dataframe with the decision variables and objective values
 df = pd.DataFrame(np.hstack([X, F]), columns=["st",	"ad","theta","phi","alpha1","alpha2","m","p","t", "ct", "cl","eta"])
