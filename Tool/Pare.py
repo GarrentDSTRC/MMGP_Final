@@ -51,15 +51,15 @@ fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
 # 绘制真实前沿的非支配解 (蓝色)
-ax.scatter(real_pareto_front[:, 0], real_pareto_front[:, 1], real_pareto_front[:, 2], c="blue", marker="o", label="真实前沿", s=20)
+ax.scatter(real_pareto_front[:, 0], real_pareto_front[:, 1], real_pareto_front[:, 2], c="blue", marker="o", label="数据集前沿", s=20)
 
 # 绘制预测前沿的非支配解 (红色)
 ax.scatter(pred_pareto_front[:, 0], pred_pareto_front[:, 1], pred_pareto_front[:, 2], c="red", marker="o", label="预测前沿", s=20)
 
 # 设置坐标轴标签，使用 LaTeX 格式
-ax.set_xlabel(r'$C_T$', fontsize=22, fontfamily='Times New Roman')
-ax.set_ylabel(r'$C_L$', fontsize=22, fontfamily='Times New Roman')
-ax.set_zlabel(r'$\eta$', fontsize=22, fontfamily='Times New Roman')
+ax.set_xlabel(r'$C_T$', fontsize=16, fontfamily='Times New Roman')
+ax.set_ylabel(r'$C_L$', fontsize=16, fontfamily='Times New Roman')
+ax.set_zlabel(r'$\eta$', fontsize=16, fontfamily='Times New Roman')
 
 # 设置坐标轴刻度字体大小
 ax.tick_params(axis='both', which='major', labelsize=14)

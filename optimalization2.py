@@ -144,12 +144,29 @@ class InnerProblem(Problem):
         test_x = torch.tensor(full_variables).to(torch.float32)
         test_i_task2 = torch.full((test_x.shape[0], 1), dtype=torch.long, fill_value=1)
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
-            observed_pred_yH = likelihood(*model((test_x, test_i_task2), (test_x, test_i_task2),(test_x, test_i_task2)))
+            observed_pred_yH = likelihood(
+                *model((test_x, test_i_task2), (test_x, test_i_task2), (test_x, test_i_task2)))
             observed_pred_yHC = -np.array(observed_pred_yH[0].mean.tolist())  # ct high
-            observed_pred_yHL = - np.array(observed_pred_yH[1].mean.tolist()) # CL high
-            observed_pred_yHE = - np.array(observed_pred_yH[2].mean.tolist())  # eta high
-        N=np.array([observed_pred_yHC,observed_pred_yHL,observed_pred_yHE]).T
-        results = np.hstack((test_x.numpy(),GPscale2*np.arctan(N/-GPscale)))
+            observed_pred_yHL = -np.array(observed_pred_yH[1].mean.tolist())  # CL high
+            observed_pred_yHE = -np.array(observed_pred_yH[2].mean.tolist())  # eta high
+        # 限制值在-1到1之间
+        observed_pred_yHC = np.clip(observed_pred_yHC, -3 + 1e-7, 3 - 1e-7)
+        observed_pred_yHL = np.clip(observed_pred_yHL, -3 + 1e-7, 3 - 1e-7)
+        observed_pred_yHE = np.clip(observed_pred_yHE, -3 + 1e-7, 3 - 1e-7)
+        # 尝试计算N，并捕获可能的内存错误
+        try:
+            N = GPscale2 * np.arctanh(np.array([observed_pred_yHC, observed_pred_yHL, observed_pred_yHE]).T / GPscale)
+        except MemoryError as e:
+            print("MemoryError: ", e)
+        # N[np.isinf(N)] = 10
+        # N[np.isneginf(N)] = 10
+        for i in range(N.shape[0]):
+            if N[i,1]<-0.9 and N[i,0]<0:
+                N[i,1]=N[i,1]*0.7+N[i,0]*0.3
+            else:
+                N[i, 1]=np.inf
+
+        results = np.hstack((test_x.numpy(),-N))
         df = pd.DataFrame(results)
         # Incrementally write to the CSV file
         df.to_csv(self.csv_file_path, mode='a', header=not pd.io.common.file_exists(self.csv_file_path), index=False)
@@ -168,11 +185,11 @@ class OuterProblem(Problem):
         for variables in x:
             i=i+1
             problem = InnerProblem(variables)
-            pop_2 = Population.new("X", pop[-1000:, :6].numpy())
+            pop_2 = Population.new("X", pop[-800:, :6].numpy())
             algorithm = NSGA2( pop_size=1000, eliminate_duplicates=True,sampling=pop_2)
             res = minimize(problem, algorithm, termination=("n_gen", 45),seed=1)
             max_values = np.min(res.F, axis=0)  # Get the maximum value for each objective
-            print(i,max_values)
+            print(i,-1*max_values)
             results.append(max_values)
         out["F"] = np.array(results)
 from pymoo.core.callback import Callback
@@ -260,11 +277,11 @@ else:
     for variables in centroids_array:
         i = i + 1
         problem = InnerProblem(variables)
-        pop_2 = Population.new("X", full_train_x[:, :6].numpy())
-        algorithm = NSGA2(pop_size=1000, eliminate_duplicates=True, sampling=pop_2)
-        res = minimize(problem, algorithm, termination=("n_gen", 15), seed=1)
+        pop_2 = Population.new("X", full_train_x[-300:, :6].numpy())
+        algorithm = NSGA2(pop_size=300, eliminate_duplicates=True, sampling=pop_2)
+        res = minimize(problem, algorithm, termination=("n_gen", 1), seed=1)
         max_values = np.min(res.F, axis=0)  # Get the maximum value for each objective
-        print(i, GPscale2*np.arctan(max_values/-GPscale))
+        print(i, -max_values)
         results.append(max_values)
 
 # Create a 3D scatter plot

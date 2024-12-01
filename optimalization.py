@@ -94,14 +94,14 @@ for i in range(Episode):
         model.load_state_dict(state_dict)
     else:
         pass
-    # for j in range(training_iterations):
-    #     optimizer.zero_grad()
-    #     output = model(*model.train_inputs)
-    #     loss = -mll(output, model.train_targets)
-    #     loss.backward(retain_graph=True)
-    #     print('Iter %d/%d - Loss: %.3f' % (j + 1,training_iterations, loss.item()))
-    #     optimizer.step()
-    # torch.save(model.state_dict(), path5)
+    for j in range(training_iterations):
+        optimizer.zero_grad()
+        output = model(*model.train_inputs)
+        loss = -mll(output, model.train_targets)
+        loss.backward(retain_graph=True)
+        print('Iter %d/%d - Loss: %.3f' % (j + 1,training_iterations, loss.item()))
+        optimizer.step()
+    torch.save(model.state_dict(), path5)
 model.eval()
 likelihood.eval()
 
