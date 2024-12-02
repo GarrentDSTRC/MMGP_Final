@@ -28,7 +28,9 @@ def generate_waveform( X, folder_name,mode="CFD"):
 
     # φ(t')定义
     def phi(t):
-        return t + alpha * y(t) ** 2
+        return t + alpha * np.sin(t) ** 2
+        # return t - alpha * np.sin(0.5*t)**2
+        # return t - alpha * np.sin(0.5 * (t+np.pi/2)) ** 2
 
     # 使用数值方法找到φ^-1(t')的对应t值
     def phi_inverse(phi_prime, t_values):
@@ -52,7 +54,7 @@ def generate_waveform( X, folder_name,mode="CFD"):
     z_values = [(amplitude * np.pi / 180) * z(phi_prime, t_values) for phi_prime in phi_values]
     # 使用线性插值生成均匀的时间点
     phi_uniform = t_values
-    f_interp = interp1d(phi_values, z_values)
+    f_interp = interp1d(phi_values, z_values, fill_value='extrapolate')
     z_uniform = f_interp(phi_uniform)
 
 
@@ -91,7 +93,7 @@ def generate_waveform( X, folder_name,mode="CFD"):
     plt.xlabel("φ")
     plt.ylabel("z(φ)")
     plt.legend()
-    #plt.show()
+    plt.show()
     plt.savefig("waveform.png")
 
     return f"Waveforms saved to {folder_name}/control.txt and {folder_name}/control2.txt"
