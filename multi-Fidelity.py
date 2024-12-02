@@ -46,8 +46,10 @@ testmode="experiment_cluster"  #"CFD" "experiment"
 UPBound = np.array(UPB).T
 LOWBound = np.array(LOWB).T
 dict = [i for i in range(TestX.shape[0])]
+GPscale=3
+GPscale2=3
 def save(full_train_x,full_train_i,full_train_y):
-    full_train_y = torch.atanh(full_train_y/10)
+    full_train_y =GPscale* torch.atanh(full_train_y/GPscale2)
     np.savetxt(path1csv, full_train_x.cpu().numpy(),delimiter=',')
     np.savetxt(path2csv, full_train_i.cpu().numpy(),delimiter=',')
     np.savetxt(path3csv, np.array(full_train_y.cpu()),delimiter=',')
@@ -64,7 +66,7 @@ if os.path.exists(path1csv):
     full_train_i=torch.FloatTensor(np.loadtxt(path2csv,delimiter=','))
     full_train_y=torch.FloatTensor(np.loadtxt(path3csv, delimiter=','))
     full_train_i=torch.unsqueeze(full_train_i,dim=1)
-    full_train_y = 10*torch.tanh(full_train_y)
+    full_train_y =GPscale* torch.tanh(full_train_y/GPscale2)
     if os.path.exists(path4csv):
         dict = np.loadtxt(path4csv,  delimiter=',').astype(int).tolist()
 else:
@@ -110,7 +112,7 @@ else:
     np.savetxt(path1csv, np.array(full_train_x.cpu()),delimiter=',')
     np.savetxt(path2csv, np.array(full_train_i.cpu()),delimiter=',')
     np.savetxt(path3csv, np.array(full_train_y.cpu()),delimiter=',')
-    full_train_y =10* torch.tanh(full_train_y)
+    full_train_y =GPscale* torch.tanh(full_train_y/GPscale2)
 
 # Here we have two iterms that we're passing in as train_inputs
 likelihood1 = gpytorch.likelihoods.GaussianLikelihood().to(device)
@@ -118,11 +120,9 @@ likelihood1 = gpytorch.likelihoods.GaussianLikelihood().to(device)
 model1 = MultiFidelityGPModel((full_train_x[:,:], full_train_i[:,:]), full_train_y[:,0], likelihood1).to(device)
 likelihood2 = gpytorch.likelihoods.GaussianLikelihood().to(device)
 model2 = MultiFidelityGPModel((full_train_x[:,:], full_train_i[:,:]), full_train_y[:,1], likelihood2).to(device)
-likelihood3 = gpytorch.likelihoods.GaussianLikelihood().to(device)
-model3 = MultiFidelityGPModel((full_train_x[:,:], full_train_i[:,:]), full_train_y[:,2], likelihood3).to(device)
 
-model = gpytorch.models.IndependentModelList(model1, model2,model3).to(device)
-likelihood = gpytorch.likelihoods.LikelihoodList(model1.likelihood, model2.likelihood,model3.likelihood)
+model = gpytorch.models.IndependentModelList(model1, model2).to(device)
+likelihood = gpytorch.likelihoods.LikelihoodList(model1.likelihood, model2.likelihood)
 
 print(model)
 
@@ -167,15 +167,14 @@ for i in range(Episode):
                 y_max=[torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 0]).item(), torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 1]).item(), torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 1]).item()
                        ], offline=Offline,
                 train_x=full_train_x,testmode=testmode,final_population_X=[],norm=normalizer)
-    Y2 =10* torch.tanh(Y)
+    Y2 =GPscale* torch.tanh(Y/GPscale2)
     full_train_x = torch.cat((full_train_x, X), dim=0).to(torch.float32).to(device)
     full_train_i = torch.cat((full_train_i, torch.ones(Infillpoints).unsqueeze(-1)), dim=0).to(torch.float32).to(device)
     full_train_y = torch.cat((full_train_y, Y2), dim=0).to(torch.float32).to(device)
     save(full_train_x,full_train_i,full_train_y)
     model1 = MultiFidelityGPModel((full_train_x, full_train_i), full_train_y[:, 0], likelihood1).to(device)
     model2 = MultiFidelityGPModel((full_train_x, full_train_i), full_train_y[:, 1], likelihood2).to(device)
-    model3 = MultiFidelityGPModel((full_train_x, full_train_i), full_train_y[:, 2], likelihood3).to(device)
-    model = gpytorch.models.IndependentModelList(model1, model2, model3).to(device)
+    model = gpytorch.models.IndependentModelList(model1, model2).to(device)
 
     model.train()
     likelihood.train()
