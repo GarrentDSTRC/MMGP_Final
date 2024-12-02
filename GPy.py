@@ -115,7 +115,7 @@ def findpointOL(X,num_task=1,mode="experiment"):
             for j in range(8):
                 generate_waveform(X[i*8+j,0:3].tolist(),r'.\MMGP_OL%d'%(j%8),mode)
                 np.savetxt(r'.\MMGP_OL%d\flag.txt'%(j%8), np.array([0]), delimiter=',', fmt='%d')
-                fill=np.array([[0,0,0,0,X[i*8+j,6],X[i*8+j,7],X[i*8+j,8],6000 ]])
+                fill=np.array([[0,0,0,0,X[i*8+j,-3],X[i*8+j,-2],X[i*8+j,-1],6000 ]])
                 np.savetxt(r'.\MMGP_OL%d\dataX.txt' % (j % 8), fill, delimiter=',', fmt='%.2f')
             for j in range(8):
                 flag=np.loadtxt(r'.\MMGP_OL%d\flag.txt'%(j%8), delimiter=",", dtype="int")

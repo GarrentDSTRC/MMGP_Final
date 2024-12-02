@@ -5,8 +5,8 @@ from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 
 controlFre = 1000
-c=1
-U=1
+c=0.06
+U=0.1
 mode="CFD"
 def generate_waveform( X, folder_name,mode="CFD"):
     # 创建文件夹（如果不存在）

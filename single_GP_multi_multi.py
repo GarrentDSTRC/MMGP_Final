@@ -31,7 +31,7 @@ pathx=r'.\Database\train_x.csv'
 pathy=r'.\Database\train_y.csv'
 
 
-init_sample=8*30
+init_sample=8*3
 training_iter=30#55#110
 Infillpoints=8*2
 Episode=87#47
