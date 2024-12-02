@@ -12,10 +12,13 @@ global model,likelihood
 from GPy import UPB,LOWB
 import pandas as pd
 # Load the uploaded centroids file
-centroids_path = 'Database/centroids.csv'
-centroids = pd.read_csv(centroids_path, header=None)
-centroids_array = centroids.to_numpy()
-centroids_tensor = torch.tensor(centroids_array, dtype=torch.float32)
+import os
+if os.path.exists('Database\centroids.csv'):
+    centroids_path = 'Database/centroids.csv'
+    centroids = pd.read_csv(centroids_path, header=None)
+    centroids_array = centroids.to_numpy()
+    centroids_tensor = torch.tensor(centroids_array, dtype=torch.float32)
+
 
 def optIGD(mymodel,mylikelihood,num_task=-2,testmode="test_WFG",train_x=[]):
     global model, likelihood

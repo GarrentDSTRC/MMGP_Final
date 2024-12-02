@@ -14,8 +14,13 @@ from gpytorch.priors import NormalPrior
 from deap import algorithms, base, creator, tools
 from functools import partial
 from scipy.spatial.distance import cdist
+import os
 # Load the new data file without headers
-centroids_df = pd.read_csv('Database\centroids.csv', header=None)
+if os.path.exists('Database\centroids.csv'):
+    centroids_df = pd.read_csv('Database\centroids.csv', header=None)
+    centroids_array = centroids_df.to_numpy()
+    centroids_tensor = torch.tensor(centroids_array, dtype=torch.float32)
+
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device("cpu")
 Frame = pd.read_excel('.\ROM\BF_search.xlsx', sheet_name="HL")
@@ -41,8 +46,6 @@ import time
 inittime=time.time()
 ###################num——task   + single fidelity -multifidelity    ### |task|=multitask
 
-centroids_array = centroids_df.to_numpy()
-centroids_tensor = torch.tensor(centroids_array, dtype=torch.float32)
 def replace_last_three_with_nearest_class_tensor(matrix):
     """
     将矩阵的每一行最后三个元素替换为最接近的类中心。

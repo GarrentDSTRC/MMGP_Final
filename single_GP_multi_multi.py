@@ -130,13 +130,13 @@ if __name__=="__main__":
     #save()
     # independent Multitask
     likelihood1 = gpytorch.likelihoods.GaussianLikelihood(noise_constraint=gpytorch.constraints.GreaterThan(1e-4)).to(device)
-    model1 = SpectralMixtureGPModelBack(train_x,train_y[:,0], likelihood1).to(device)
+    model1 = DKLModel(train_x,train_y[:,0], likelihood1).to(device)
     likelihood2 = gpytorch.likelihoods.GaussianLikelihood(noise_constraint=gpytorch.constraints.GreaterThan(1e-4)).to(device)
-    model2 = SpectralMixtureGPModelBack(train_x,train_y[:,1], likelihood2).to(device)
+    model2 = DKLModel(train_x,train_y[:,1], likelihood2).to(device)
     # 定义第三个模型的似然函数
     likelihood3 = gpytorch.likelihoods.GaussianLikelihood(noise_constraint=gpytorch.constraints.GreaterThan(1e-4)).to(device)
     # 假设train_y的第三列为第三个模型的训练目标
-    model3 = SpectralMixtureGPModelBack(train_x, train_y[:, 2], likelihood3).to(device)
+    model3 = DKLModel(train_x, train_y[:, 2], likelihood3).to(device)
     # 将model3和like3添加到模型列表和似然列表中
     model = gpytorch.models.IndependentModelList(model1, model2, model3).to(device)
     likelihood = gpytorch.likelihoods.LikelihoodList(model1.likelihood, model2.likelihood, model3.likelihood)
@@ -176,9 +176,9 @@ if __name__=="__main__":
         print("addpoint",X)
         train_x=torch.cat((train_x,X),dim=0).to(torch.float32)
         train_y=torch.cat((train_y,Y),dim=0).to(torch.float32)
-        model1 = SpectralMixtureGPModelBack(train_x, train_y[:, 0], likelihood1).to(device)
-        model2 = SpectralMixtureGPModelBack(train_x, train_y[:, 1], likelihood2).to(device)
-        model3 = SpectralMixtureGPModelBack(train_x, train_y[:, 2], likelihood3).to(device)
+        model1 = DKLModel(train_x, train_y[:, 0], likelihood1).to(device)
+        model2 = DKLModel(train_x, train_y[:, 1], likelihood2).to(device)
+        model3 = DKLModel(train_x, train_y[:, 2], likelihood3).to(device)
         model = gpytorch.models.IndependentModelList(model1, model2, model3).to(device)
         likelihood = gpytorch.likelihoods.LikelihoodList(model1.likelihood, model2.likelihood, model3.likelihood)
         model.train()

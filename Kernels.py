@@ -233,4 +233,29 @@ class MultiFidelityGPModel(gpytorch.models.ExactGP):
         #         covar2 = covar2_x * covar2_i pipreqs ./ --encoding=utf8
 
         return gpytorch.distributions.MultivariateNormal(mean_x, covar1 + covar2)
+class DKLModel(gpytorch.models.ExactGP):
+    def __init__(self, train_x, train_y, likelihood):
+        super(DKLModel, self).__init__(train_x, train_y, likelihood)
+
+        self.mean_module = gpytorch.means.ConstantMean()
+        ###############deep kernel
+        dim2=3
+        self.feature_extractor = LargeFeatureExtractor(int(train_x[0].shape[1]),dim2)
+        # This module will scale the NN features so that they're nice values
+        self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(-1., 1.)
+        ###############deep kernel
+
+        self.covar_module1 = gpytorch.kernels.ScaleKernel(
+                gpytorch.kernels.RBFKernel()
+            )+gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel())
+
+    def forward(self, x, i):
+        ###############deep kernel
+        projected_x = self.feature_extractor(x)
+        x = self.scale_to_bounds(projected_x)  # Make the NN values "nice"
+        ###############deep kernel
+        mean_x = self.mean_module(x)
+        # Get input-input covariance
+        covar1_x = self.covar_module1(x)
+        return gpytorch.distributions.MultivariateNormal(mean_x, covar1_x)
 
