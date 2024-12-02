@@ -10,7 +10,11 @@ U=1
 mode="CFD"
 def generate_waveform( X, folder_name,mode="CFD"):
     # 创建文件夹（如果不存在）
-    St, amplitude2, amplitude, phase_difference, alpha, alpha2=X
+    #St, amplitude2, amplitude, phase_difference, alpha, alpha2=X
+    St,  amplitude,  alpha=X
+    phase_difference=0
+    amplitude2=0
+    alpha2=0
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
     if mode=="CFD":
@@ -28,9 +32,9 @@ def generate_waveform( X, folder_name,mode="CFD"):
 
     # φ(t')定义
     def phi(t):
-        return t + alpha * np.sin(t) ** 2
+        #return t + alpha * np.sin(t) ** 2
         # return t - alpha * np.sin(0.5*t)**2
-        # return t - alpha * np.sin(0.5 * (t+np.pi/2)) ** 2
+        return t - alpha * np.sin(0.5 * (t+np.pi/2)) ** 2
 
     # 使用数值方法找到φ^-1(t')的对应t值
     def phi_inverse(phi_prime, t_values):
@@ -93,16 +97,18 @@ def generate_waveform( X, folder_name,mode="CFD"):
     plt.xlabel("φ")
     plt.ylabel("z(φ)")
     plt.legend()
-    plt.show()
+    #plt.show()
     plt.savefig("waveform.png")
 
     return f"Waveforms saved to {folder_name}/control.txt and {folder_name}/control2.txt"
 
-UPB=[0.9/0.4*0.06, 0.08/0.06, 85, -45, 0.9,0.9]
-LOWB=[0.4/0.4*0.06, 0.04/0.06, 55, -140, -0.9,-0.9]
-
-UPB=[0.9, 0.08, 85, -45, 0.9,0.9]
-LOWB=[0.4, 0.04, 55, -140, -0.9,-0.9]
+# UPB=[0.9/0.4*0.06, 0.08/0.06, 85, -45, 0.9,0.9]
+# LOWB=[0.4/0.4*0.06, 0.04/0.06, 55, -140, -0.9,-0.9]
+#
+# UPB=[0.9, 0.08, 85, -45, 0.9,0.9]
+# LOWB=[0.4, 0.04, 55, -140, -0.9,-0.9]
+UPB=[0.3, 85,0.9,9,9,35]
+LOWB=[0.1, 15,-0.9,0,0,10]
 import torch
 class Normalizer:
     def __init__(self, low_bound=LOWB, up_bound=UPB):
@@ -127,7 +133,7 @@ X=[0.15,	0.7,	80,	-90,	0	,0]
 x1=[9.45E-01,	3.67E-01,	6.48E-01	,1.48E-01,	3.36E-01,	2.27E-01
 ]
 x=[0.99,	0.12,	0.80,	0.20,	0.35,	0.19]
-x=[6.63E-01	,3.75E-02,	7.38E-01	,6.13E-01,	7.88E-01,	1.25E-02]
+#x=[6.63E-01	,3.75E-02,	7.38E-01	,6.13E-01,	7.88E-01,	1.25E-02]
 X=norm.denormalize(x).tolist()
 
 
@@ -136,5 +142,5 @@ last_col = X[-1]  # Extract the last column
 j=1
 np.savetxt(r'.\MMGP_OL%d\dataX.txt' % (j % 8), np.array([[0, 0, 0, 0, 0, 0, 15, 10000]]),
                        delimiter=',', fmt='%d')
-generate_waveform(X,"MMGP_OL%d"% (j % 8))
+generate_waveform(X[0:3],"MMGP_OL%d"% (j % 8))
 # Test

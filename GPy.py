@@ -15,7 +15,11 @@ from deap import algorithms, base, creator, tools
 from functools import partial
 from scipy.spatial.distance import cdist
 # Load the new data file without headers
-centroids_df = pd.read_csv('Database\centroids.csv', header=None)
+import os
+if os.path.exists('Database\centroids.csv'):
+    centroids_df = pd.read_csv('Database\centroids.csv', header=None)
+    centroids_array = centroids_df.to_numpy()
+    centroids_tensor = torch.tensor(centroids_array, dtype=torch.float32)
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device("cpu")
 Frame = pd.read_excel('.\ROM\BF_search.xlsx', sheet_name="HL")
@@ -34,15 +38,14 @@ TestX=torch.as_tensor(list(zip(a.flatten(),b.flatten(),c.flatten(),d.flatten(),e
 OLSCALE=1
 #UPB=[1.0, 0.6, 40, 180, 1,1,1000]
 #LOWB=[0.4, 0.1, 5, -180, -1,-1,100]
-UPB=[0.3, 1.3, 85, 180, 0.9,0.9,9,9,35]
-LOWB=[0.1, 0.4, 15, -180, -0.9,-0.9,0,0,10]
+UPB=[0.3, 85,0.9,9,9,35]
+LOWB=[0.1, 15,-0.9,0,0,10]
 
 import time
 inittime=time.time()
 ###################num——task   + single fidelity -multifidelity    ### |task|=multitask
 
-centroids_array = centroids_df.to_numpy()
-centroids_tensor = torch.tensor(centroids_array, dtype=torch.float32)
+
 def replace_last_three_with_nearest_class_tensor(matrix):
     """
     将矩阵的每一行最后三个元素替换为最接近的类中心。
@@ -110,7 +113,7 @@ def findpointOL(X,num_task=1,mode="experiment"):
         num_task=np.abs(num_task)
         for i in range(int(num_p/8)):
             for j in range(8):
-                generate_waveform(X[i*8+j,0:6].tolist(),r'.\MMGP_OL%d'%(j%8),mode)
+                generate_waveform(X[i*8+j,0:3].tolist(),r'.\MMGP_OL%d'%(j%8),mode)
                 np.savetxt(r'.\MMGP_OL%d\flag.txt'%(j%8), np.array([0]), delimiter=',', fmt='%d')
                 fill=np.array([[0,0,0,0,X[i*8+j,6],X[i*8+j,7],X[i*8+j,8],6000 ]])
                 np.savetxt(r'.\MMGP_OL%d\dataX.txt' % (j % 8), fill, delimiter=',', fmt='%.2f')

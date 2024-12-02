@@ -99,6 +99,8 @@ class MultitaskGPModel(gpytorch.models.ExactGP):
         mean_x = self.mean_module(x)
         covar_x = self.covar_module(x)
         return gpytorch.distributions.MultitaskMultivariateNormal(mean_x, covar_x)
+
+
 class TwoFidelityIndexKernel(Kernel):
     """
     Separate kernel for each task based on the Hadamard Product between the task
@@ -169,7 +171,31 @@ class TwoFidelityIndexKernel(Kernel):
             right_interp_indices=i2.expand(batch_shape + i2.shape[-2:]),
         )
         return res
+class DKLModel(gpytorch.models.ExactGP):
+    def __init__(self, train_x, train_y, likelihood):
+        super(DKLModel, self).__init__(train_x, train_y, likelihood)
 
+        self.mean_module = gpytorch.means.ConstantMean()
+        ###############deep kernel
+        dim2=3
+        self.feature_extractor = LargeFeatureExtractor(int(train_x[0].shape[1]),dim2)
+        # This module will scale the NN features so that they're nice values
+        self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(-1., 1.)
+        ###############deep kernel
+
+        self.covar_module1 = gpytorch.kernels.ScaleKernel(
+                gpytorch.kernels.RBFKernel()
+            )+gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel())
+
+    def forward(self, x, i):
+        ###############deep kernel
+        projected_x = self.feature_extractor(x)
+        x = self.scale_to_bounds(projected_x)  # Make the NN values "nice"
+        ###############deep kernel
+        mean_x = self.mean_module(x)
+        # Get input-input covariance
+        covar1_x = self.covar_module1(x)
+        return gpytorch.distributions.MultivariateNormal(mean_x, covar1_x)
 class MultiFidelityGPModel(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood):
         super(MultiFidelityGPModel, self).__init__(train_x, train_y, likelihood)

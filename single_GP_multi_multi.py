@@ -37,11 +37,11 @@ Infillpoints=8*2
 Episode=87#47
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device("cpu")
-num_tasks=3
+num_tasks=2
 #正@ 表示@
 Offline=0
 dict = [i for i in range(TestX.shape[0])]
-testmode="CFD"#DTLZ#WFG#CFD
+testmode="experiment_cluster"#DTLZ#WFG#CFD
 
 dim = np.array(UPB).shape[0]
 def save():
@@ -130,16 +130,13 @@ if __name__=="__main__":
     #save()
     # independent Multitask
     likelihood1 = gpytorch.likelihoods.GaussianLikelihood(noise_constraint=gpytorch.constraints.GreaterThan(1e-4)).to(device)
-    model1 = SpectralMixtureGPModelBack(train_x,train_y[:,0], likelihood1).to(device)
+    model1 = DKLModel(train_x,train_y[:,0], likelihood1).to(device)
     likelihood2 = gpytorch.likelihoods.GaussianLikelihood(noise_constraint=gpytorch.constraints.GreaterThan(1e-4)).to(device)
-    model2 = SpectralMixtureGPModelBack(train_x,train_y[:,1], likelihood2).to(device)
+    model2 = DKLModel(train_x,train_y[:,1], likelihood2).to(device)
     # 定义第三个模型的似然函数
-    likelihood3 = gpytorch.likelihoods.GaussianLikelihood(noise_constraint=gpytorch.constraints.GreaterThan(1e-4)).to(device)
-    # 假设train_y的第三列为第三个模型的训练目标
-    model3 = SpectralMixtureGPModelBack(train_x, train_y[:, 2], likelihood3).to(device)
     # 将model3和like3添加到模型列表和似然列表中
-    model = gpytorch.models.IndependentModelList(model1, model2, model3).to(device)
-    likelihood = gpytorch.likelihoods.LikelihoodList(model1.likelihood, model2.likelihood, model3.likelihood)
+    model = gpytorch.models.IndependentModelList(model1, model2).to(device)
+    likelihood = gpytorch.likelihoods.LikelihoodList(model1.likelihood, model2.likelihood)
 
     from gpytorch.mlls import SumMarginalLogLikelihood
     mll = SumMarginalLogLikelihood(likelihood, model)
@@ -176,11 +173,10 @@ if __name__=="__main__":
         print("addpoint",X)
         train_x=torch.cat((train_x,X),dim=0).to(torch.float32)
         train_y=torch.cat((train_y,Y),dim=0).to(torch.float32)
-        model1 = SpectralMixtureGPModelBack(train_x, train_y[:, 0], likelihood1).to(device)
-        model2 = SpectralMixtureGPModelBack(train_x, train_y[:, 1], likelihood2).to(device)
-        model3 = SpectralMixtureGPModelBack(train_x, train_y[:, 2], likelihood3).to(device)
-        model = gpytorch.models.IndependentModelList(model1, model2, model3).to(device)
-        likelihood = gpytorch.likelihoods.LikelihoodList(model1.likelihood, model2.likelihood, model3.likelihood)
+        model1 = DKLModel(train_x, train_y[:, 0], likelihood1).to(device)
+        model2 = DKLModel(train_x, train_y[:, 1], likelihood2).to(device)
+        model = gpytorch.models.IndependentModelList(model1, model2).to(device)
+        likelihood = gpytorch.likelihoods.LikelihoodList(model1.likelihood, model2.likelihood)
         model.train()
         likelihood.train()
         #save()
