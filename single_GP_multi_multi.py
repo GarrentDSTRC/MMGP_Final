@@ -31,7 +31,7 @@ pathx=r'.\Database\train_x.csv'
 pathy=r'.\Database\train_y.csv'
 
 
-init_sample=8*3
+init_sample=8*25
 training_iter=30#55#110
 Infillpoints=8*2
 Episode=87#47
@@ -146,7 +146,7 @@ if __name__=="__main__":
     # Use the adam optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=0.1)  # Includes GaussianLikelihood parameters
 
-    cofactor = [ 0.5,[0.3,0.3,0.3]]
+    cofactor = [ 0.5,0.5]
     for j in range(Episode):
         print("Episode",j,"point",len(train_y))
         model.train()

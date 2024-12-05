@@ -178,7 +178,7 @@ class DKLModel(gpytorch.models.ExactGP):
         self.mean_module = gpytorch.means.ConstantMean()
         ###############deep kernel
         dim2=3
-        self.feature_extractor = LargeFeatureExtractor(int(train_x[0].shape[1]),dim2)
+        self.feature_extractor = LargeFeatureExtractor(int(train_x.shape[1]),dim2)
         # This module will scale the NN features so that they're nice values
         self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(-1., 1.)
         ###############deep kernel
@@ -187,7 +187,7 @@ class DKLModel(gpytorch.models.ExactGP):
                 gpytorch.kernels.RBFKernel()
             )+gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel())
 
-    def forward(self, x, i):
+    def forward(self, x):
         ###############deep kernel
         projected_x = self.feature_extractor(x)
         x = self.scale_to_bounds(projected_x)  # Make the NN values "nice"
@@ -202,7 +202,7 @@ class MultiFidelityGPModel(gpytorch.models.ExactGP):
 
         self.mean_module = gpytorch.means.ConstantMean()
         ###############deep kernel
-        dim2=5
+        dim2=3
         self.feature_extractor = LargeFeatureExtractor(int(train_x[0].shape[1]),dim2)
         # This module will scale the NN features so that they're nice values
         self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(-1., 1.)

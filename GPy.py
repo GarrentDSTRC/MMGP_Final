@@ -291,10 +291,11 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
 
     # Convert final population to list of Individuals
     final_population_individuals = [creator.Individual(x.numpy()) for x in train_x]
-    if testmode == "experiment_cluster":
-        clustered = replace_last_three_with_nearest_class_tensor(final_population_individuals)
-        for i,individual in enumerate(final_population_individuals):
-                individual[-3:] = clustered[i,-3:].numpy()
+    if os.path.exists('Database\centroids.csv'):
+        if testmode == "experiment_cluster":
+            clustered = replace_last_three_with_nearest_class_tensor(final_population_individuals)
+            for i,individual in enumerate(final_population_individuals):
+                    individual[-3:] = clustered[i,-3:].numpy()
     fitnessvalues = evaluateEI(final_population_individuals,
                                            model=model,
                                            likelihood=likelihood,
@@ -343,10 +344,11 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
         # 合并父代与子代
         pop = pop + offspring
         # 评价族群-更新新族群的适应度
-        if testmode == "experiment_cluster":
-            for individual in pop:
-                clustered = replace_last_three_with_nearest_class_tensor(individual)
-                individual[-3:] = clustered[0, -3:].numpy()
+        if os.path.exists('Database\centroids.csv'):
+            if testmode == "experiment_cluster":
+                for individual in pop:
+                    clustered = replace_last_three_with_nearest_class_tensor(individual)
+                    individual[-3:] = clustered[0, -3:].numpy()
         fitnessvalues = evaluateEI(pop,
                                    model=model,
                                    likelihood=likelihood,
