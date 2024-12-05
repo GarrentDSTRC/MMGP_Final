@@ -19,7 +19,6 @@ if os.path.exists('Database\centroids.csv'):
     centroids_array = centroids.to_numpy()
     centroids_tensor = torch.tensor(centroids_array, dtype=torch.float32)
 
-
 def optIGD(mymodel,mylikelihood,num_task=-2,testmode="test_WFG",train_x=[]):
     global model, likelihood
     model=mymodel
@@ -32,7 +31,6 @@ def optIGD(mymodel,mylikelihood,num_task=-2,testmode="test_WFG",train_x=[]):
     else:
         problem = MyProblem(num_task, testmode, constr=0)
     # # Define the reference directions for the Pareto front
-    # from pymoo.util.ref_dirs import get_reference_directions
     ref_dirs = get_reference_directions("das-dennis", 2, n_partitions=12)
     pop = Population.new("X", np.concatenate((train_x[:700, :].numpy(), train_x[-230:, :].numpy())))
     # Create an instance of the NSGA-II algorithm
@@ -48,7 +46,6 @@ def optIGD(mymodel,mylikelihood,num_task=-2,testmode="test_WFG",train_x=[]):
     ######################IGD spread
     # 导入pymoo模块
     from pymoo.indicators.igd import IGD
-    from pymoo.problems import get_problem
 
     # 创建一个DTLZ1问题的实例，指定变量数和目标数
     if testmode=="test_WFG" :
@@ -92,19 +89,19 @@ def optIGD(mymodel,mylikelihood,num_task=-2,testmode="test_WFG",train_x=[]):
     A = -1*res.F
 
     # 创建IGD和spread指标的实例，传入真实帕累托前沿作为参考集
-    igd = IGD(plf)
+    # igd = IGD(plf)
 
-    # 计算解集A的IGD和spread值
-    igd_value = igd(A)
-    # 打印结果
-    print("IGD:", igd_value)
+    # # 计算解集A的IGD和spread值
+    # igd_value = igd(A)
+    # # 打印结果
+    # print("IGD:", igd_value)
 
     final_population_X = res.pop.get("X")
     final_population_X_tensor = torch.tensor(final_population_X, dtype=torch.float32)
 
     # ... The rest of the code remains the same...
 
-    return igd_value, final_population_X
+    return 0, final_population_X
 
 
 # Define a custom problem class that takes the observed predictions as objectives
@@ -135,9 +132,8 @@ class MyProblem(Problem):
                 observed_pred_yH = likelihood(*model(test_x, test_x))
             observed_pred_yHT = -1*np.array(observed_pred_yH[0].mean.tolist())  # ct high
             observed_pred_yHL = -1*np.array(observed_pred_yH[1].mean.tolist())  # eta high
-            observed_pred_yHE = -1 * np.array(observed_pred_yH[2].mean.tolist())  # eta high
 
-        N=np.array([observed_pred_yHT,observed_pred_yHL,observed_pred_yHE]).T
+        N=np.array([observed_pred_yHT,observed_pred_yHL]).T
         out["F"] =N
         if self.testmode=="experiment"or "CFD":
             N1=-N[:, 1]-0.97
