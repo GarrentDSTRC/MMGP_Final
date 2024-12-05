@@ -32,7 +32,7 @@ def optIGD(mymodel,mylikelihood,num_task=-2,testmode="test_WFG",train_x=[]):
     else:
         problem = MyProblem(num_task, testmode, constr=0)
     # # Define the reference directions for the Pareto front
-    from pymoo.util.ref_dirs import get_reference_directions
+    # from pymoo.util.ref_dirs import get_reference_directions
     ref_dirs = get_reference_directions("das-dennis", 2, n_partitions=12)
     pop = Population.new("X", np.concatenate((train_x[:700, :].numpy(), train_x[-230:, :].numpy())))
     # Create an instance of the NSGA-II algorithm
