@@ -8,7 +8,7 @@ source_folder = os.path.join(current_directory, 'MMGP_OL1')
 target_folder = current_directory
 n=7
 # 循环复制和重命名文件夹
-for i in range(2, 1+n):
+for i in range(5, 1+n):
     # 构造目标文件夹路径
     target_path = os.path.join(target_folder, f'MMGP_OL{i}')
     # 复制文件夹

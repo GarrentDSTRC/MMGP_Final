@@ -168,7 +168,7 @@ if __name__=="__main__":
 
         ##########################################################infill###################
         X,Y=infillGA(model, likelihood, Infillpoints, dict, num_tasks,"EI", device=device, cofactor=cofactor, y_max = [torch.max(train_y[:, i]).item() for i in range(train_y.size(1))], offline=Offline,train_x=train_x,testmode=testmode,final_population_X=[],norm=normalizer)
-        cofactor=UpdateCofactor(model,likelihood,X.to(torch.float32),Y.to(torch.float32),cofactor,torch.max(train_y,dim=0).values-torch.min(train_y,dim=0).values)
+        cofactor=UpdateCofactor( model,likelihood,X.to(torch.float32),Y.to(torch.float32),cofactor,torch.max(train_y,dim=0).values-torch.min(train_y,dim=0).values,num_task=num_tasks)
         #cofactor=[0.5,0.5]
         print("addpoint",X)
         train_x=torch.cat((train_x,X),dim=0).to(torch.float32)

@@ -403,26 +403,39 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
         POINT,Y=findpointOL(denorm_X,num_task=num_tasks,mode=testmode)
         return X,Y
 
-def UpdateCofactor(model,likelihood,X,Y,cofactor,maxmin,MFkernel=0):
+def UpdateCofactor(model,likelihood,X,Y,cofactor,maxmin,num_task=3):
     model.eval()
     likelihood.eval()
     with torch.no_grad(), gpytorch.settings.fast_pred_var():
-        if MFkernel==0:
-            A = likelihood(*model(X, X,X))
+        if abs(num_task)==3:
+            if num_task>0:
+                A = likelihood(*model(X, X, X))
+            else:
+                I=torch.ones(X.shape[0]).to(torch.float32)
+                A =likelihood(*model((X, I), (X, I), (X, I)))
+            M = torch.mean(torch.abs(Y - torch.cat([A[0].mean.unsqueeze(1), A[1].mean.unsqueeze(1)], dim=1)), dim=0)
+            cofactor[1][0] = M[0] / maxmin[0] / (M[0] / maxmin[0] + M[1] / maxmin[1]+M[2] / maxmin[2])
+            cofactor[1][1] = M[1] / maxmin[1] / (M[0] / maxmin[0] + M[1] / maxmin[1]+M[2] / maxmin[2])
+            cofactor[1][2] = M[2] / maxmin[2] / (M[0] / maxmin[0] + M[1] / maxmin[1] + M[2] / maxmin[2])
+            f = open("./cofactor.txt", "a", encoding="utf - 8")
+            f.writelines((str(cofactor[1]) + ",", str(M[0].item()) + ",", str(M[1].item()) + "\n"))
+            f.close()
         else:
-            I=torch.ones(X.shape[0]).to(torch.float32)
-            A =likelihood(*model((X, I), (X, I), (X, I)))
-        M = torch.mean(torch.abs(Y - torch.cat([A[0].mean.unsqueeze(1), A[1].mean.unsqueeze(1),A[2].mean.unsqueeze(1)], dim=1)), dim=0)
-        cofactor[1][0] = M[0] / maxmin[0] / (M[0] / maxmin[0] + M[1] / maxmin[1]+M[2] / maxmin[2])
-        cofactor[1][1] = M[1] / maxmin[1] / (M[0] / maxmin[0] + M[1] / maxmin[1]+M[2] / maxmin[2])
-        cofactor[1][2] = M[2] / maxmin[2] / (M[0] / maxmin[0] + M[1] / maxmin[1] + M[2] / maxmin[2])
-        f = open("./cofactor.txt", "a", encoding="utf - 8")
-        f.writelines((str(cofactor[1]) + ",", str(M[0].item()) + ",", str(M[1].item()) + "\n"))
-        f.close()
+            if num_task>0:
+                A = likelihood(*model(X, X))
+            else:
+                I=torch.ones(X.shape[0]).to(torch.float32)
+                A =likelihood(*model((X, I), (X, I)))
+            M = torch.mean(torch.abs(Y - torch.cat([A[0].mean.unsqueeze(1), A[1].mean.unsqueeze(1)], dim=1)), dim=0)
+            cofactor[1] = M[0] / maxmin[0] / (M[0] / maxmin[0] + M[1] / maxmin[1])
 
-        if MFkernel == 0:
-            return cofactor
-        else: return cofactor,M
+            f = open("./cofactor.txt", "a", encoding="utf - 8")
+            f.writelines((str(cofactor[1].item()) + ",", str(M[0].item()) + ",", str(M[1].item()) + "\n"))
+            f.close()
+
+    if num_task>0:
+        return cofactor
+    else: return cofactor,M
 
 #________________________________________GA
 def evaluateMT(individual,model,likelihood):

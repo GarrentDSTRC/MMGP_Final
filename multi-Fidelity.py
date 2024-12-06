@@ -145,7 +145,7 @@ likelihood.train()
 # Use the adam optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=0.1)  # Includes GaussianLikelihood parameters
 
-cofactor = [0.5, [0.03, 0.03, 0.9]]
+cofactor=[0.5,0.5]
 for i in range(Episode):
     print(  "Episode%d-point %d : %d "%(i, torch.sum(full_train_i).item(),len(full_train_i)-torch.sum(full_train_i).item())   )
     if os.path.exists(path5):
@@ -160,9 +160,8 @@ for i in range(Episode):
         print('Iter %d/%d - Loss: %.3f' % (j + 1,training_iterations, loss.item()))
         optimizer.step()
     torch.save(model.state_dict(), path5)
-    #save()
     IGD, pop = optIGD(model, likelihood, num_task=num_tasks, testmode=testmode, train_x=full_train_x)
-    cofactor = [0.5, [0.03, 0.03, 0.9]]
+    #cofactor = [0.5, [0.03, 0.03, 0.9]]
     X, Y = infillGA(model, likelihood, Infillpoints, dict, num_tasks, "EI", device=device, cofactor=cofactor,
                 y_max=[torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 0]).item(), torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 1]).item(), torch.max(full_train_y[:int(torch.sum(full_train_i).item()), 1]).item()
                        ], offline=Offline,
@@ -180,12 +179,12 @@ for i in range(Episode):
     likelihood.train()
 
 
-    #save()
+    save()
 
 
     cofactor,MAE = UpdateCofactor(model, likelihood, X.to(torch.float32), Y.to(torch.float32), cofactor,
                           torch.max(full_train_y[:int(torch.sum(full_train_i).item()), :], dim=0).values-torch.min(full_train_y[:int(torch.sum(full_train_i).item()), :], dim=0).values
-                                  ,MFkernel=1)
+                                  )
     print("addpoint", X, "MAE", MAE)
 
 
