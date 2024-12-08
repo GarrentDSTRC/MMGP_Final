@@ -4,7 +4,7 @@ from scipy.spatial.distance import cdist
 
 
 # Load the new data file without headers
-data_df2 = pd.read_csv('x2.csv', header=None)
+data_df2 = pd.read_csv('Database/train_x.csv', header=None)
 centroids_df = pd.read_csv('centroids.csv', header=None)
 
 # Extract the last three columns for each row in the data

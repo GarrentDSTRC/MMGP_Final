@@ -97,7 +97,7 @@ def generate_waveform( X, folder_name,mode="CFD"):
     plt.xlabel("φ")
     plt.ylabel("z(φ)")
     plt.legend()
-    #plt.show()
+    plt.show()
     plt.savefig("waveform.png")
 
     return f"Waveforms saved to {folder_name}/control.txt and {folder_name}/control2.txt"
@@ -132,7 +132,7 @@ norm=Normalizer()
 X=[0.15,	0.7,	80,	-90,	0	,0]
 x1=[9.45E-01,	3.67E-01,	6.48E-01	,1.48E-01,	3.36E-01,	2.27E-01
 ]
-x=[0.99,	0.12,	0.80,	0.20,	0.35,	0.19]
+x=[0.99,	0.12,	0,	0.20,	0.35,	0.19]
 #x=[6.63E-01	,3.75E-02,	7.38E-01	,6.13E-01,	7.88E-01,	1.25E-02]
 X=norm.denormalize(x).tolist()
 
