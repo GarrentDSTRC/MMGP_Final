@@ -85,12 +85,12 @@ def MAE(model, likelihood):
     return np.mean(delta_y11), np.mean(delta_y12)
 if __name__=="__main__":
     if os.path.exists(pathx):
-        # initialDataX=np.load(path1,allow_pickle=True)
-        # initialDataY=np.load(path2,allow_pickle=True)
+        #initialDataX=np.load(path1,allow_pickle=True)
+        #initialDataY=np.load(path2,allow_pickle=True)
 
         initialDataX=np.loadtxt(pathx, delimiter=',')
         initialDataY=np.loadtxt(pathy,delimiter=',')
-
+        save()
 
         dict=np.load(path3,allow_pickle=True).astype(int).tolist()
         #自检程序

@@ -97,7 +97,7 @@ def generate_waveform( X, folder_name,mode="CFD"):
     plt.xlabel("φ")
     plt.ylabel("z(φ)")
     plt.legend()
-    plt.show()
+    #plt.show()
     plt.savefig("waveform.png")
 
     return f"Waveforms saved to {folder_name}/control.txt and {folder_name}/control2.txt"
