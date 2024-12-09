@@ -356,7 +356,10 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
                                    cofactor=cofactor,
                                    num_task=num_tasks)
         for ind, fit0, fit1 in zip(pop, fitnessvalues[0], fitnessvalues[1]):
-            ind.fitness.values = (fit0.item(), fit1.item())
+            if feasibleMT(ind):
+                ind.fitness.values = (fit0.item(), fit1.item())
+            else:
+                ind.fitness.values=(1e-3,1e-3)
         # fitnesses = map(toolbox.evaluate, pop)
         # for ind, fit in zip(pop, fitnesses):
         #     ind.fitness.values = np.array([x.item() for x in fit])
@@ -452,12 +455,13 @@ def feasibleMT(ind):
     # 判定解是否满足约束条件
     # 如果满足约束条件，返回True，否则返回False
     for i in range(len(UPB)) :
-        if   (1-ind[i])<=0:
+        if   (1.05-ind[i])<=0:
             return False
         if   (ind[i]-0)<=0:
             return False
     return  True
 def evaluateEI(individual,model,likelihood,y_max,cofactor,num_task=2):
+
     model.eval()
     likelihood.eval()
     ind=[0]*len(UPB)

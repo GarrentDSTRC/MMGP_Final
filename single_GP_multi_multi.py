@@ -90,9 +90,9 @@ if __name__=="__main__":
 
         initialDataX=np.loadtxt(pathx, delimiter=',')
         initialDataY=np.loadtxt(pathy,delimiter=',')
-        save()
+        #save()
 
-        dict=np.load(path3,allow_pickle=True).astype(int).tolist()
+        #dict=np.load(path3,allow_pickle=True).astype(int).tolist()
         #自检程序
         mask = np.any(np.isnan(initialDataY) | np.isinf(initialDataY), axis=1)
         # 根据掩码删除对应的行
