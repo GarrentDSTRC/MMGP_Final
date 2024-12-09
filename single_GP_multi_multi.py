@@ -146,7 +146,7 @@ if __name__=="__main__":
     # Use the adam optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=0.1)  # Includes GaussianLikelihood parameters
 
-    cofactor = [ 0.5,0.5]
+    cofactor = [ 0.5,1]
     for j in range(Episode):
         print("Episode",j,"point",len(train_y))
         model.train()
@@ -169,7 +169,7 @@ if __name__=="__main__":
         ##########################################################infill###################
         X,Y=infillGA(model, likelihood, Infillpoints, dict, num_tasks,"EI", device=device, cofactor=cofactor, y_max = [torch.max(train_y[:, i]).item() for i in range(train_y.size(1))], offline=Offline,train_x=train_x,testmode=testmode,final_population_X=[],norm=normalizer)
         cofactor=UpdateCofactor( model,likelihood,X.to(torch.float32),Y.to(torch.float32),cofactor,torch.max(train_y,dim=0).values-torch.min(train_y,dim=0).values,num_task=num_tasks)
-        #cofactor=[0.5,0.5]
+        cofactor=[0.5,1]
         print("addpoint",X)
         train_x=torch.cat((train_x,X),dim=0).to(torch.float32)
         train_y=torch.cat((train_y,Y),dim=0).to(torch.float32)

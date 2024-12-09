@@ -391,7 +391,7 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
             if feasibleMT(ind):
                 ind.fitness.values = (fit0.item(), fit1.item())
             else:
-                ind.fitness.values=(1e-3,1e-3)
+                ind.fitness.values=(-1e3,-1e3)
         # fitnesses = map(toolbox.evaluate, pop)
         # for ind, fit in zip(pop, fitnesses):
         #     ind.fitness.values = np.array([x.item() for x in fit])
@@ -417,6 +417,9 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
         df.to_csv('taskRelaiton.csv', index=False)
 
         candidates = []
+        if os.path.exists('Database\centroids.csv'):
+            n_points=3*n_points
+
         for pareto_front in pareto_front_ALL:
             sorted_front = sorted(pareto_front, key=lambda ind: ind.fitness.values[0] + ind.fitness.values[1],reverse=True)
             for ind in sorted_front:
@@ -433,6 +436,9 @@ def infillGA(model, likelihood, n_points, dict, num_tasks=1, method="error", cof
             candidates = candidates[0:len(candidates)-len(candidates)%8]
 
         X = torch.tensor(candidates).to(device).to(torch.float32)
+        if os.path.exists('Database\centroids.csv'):
+            X=reassign_centroids( X,min(len(candidates)// 8,2))
+
         denorm_X=norm.denormalize(X)
         print("PLAN TO SEARCH",denorm_X)
         POINT,Y=findpointOL(denorm_X,num_task=num_tasks,mode=testmode)
