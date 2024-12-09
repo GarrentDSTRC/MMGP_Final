@@ -29,7 +29,7 @@ path2H=r".\Database\savey_gpytorch_multi_EI_MS_H.npy"
 
 # We make an nxn grid of training points spaced every 1/(n-1) on [0,1]x[0,1]
 # n = 250
-init_sample = 8*15
+init_sample = 8*4
 UpB=len(Frame.iloc[:, 0].to_numpy())-1
 LowB=0
 Infillpoints=8*2
@@ -78,6 +78,8 @@ else:
     X = sp.optimallhc(init_sample)
     if testmode == "experiment_cluster":
         X=replace_last_three_with_nearest_class_tensor(X)
+        I = X.shape[0] // 8 -2
+        X=reassign_centroids( X,I)
     print(X)
     initialDataX = normalizer.denormalize(X)
     #X= LOWBound+X*(UPBound-LOWBound)

@@ -44,7 +44,39 @@ LOWB=[0.1, 15,-0.9,0,0,10]
 import time
 inittime=time.time()
 ###################num——task   + single fidelity -multifidelity    ### |task|=multitask
+def reassign_centroids(x, i):
+    global centroids_tensor
+    
+    # 确保x是torch tensor
+    x_tensor = torch.tensor(x, dtype=torch.float32)
+    
+    # 初始化一个列表来保存重新分配后的数据
+    reassigned_data = []
+    
+    # 用于记录已经选择的行的索引
+    selected_indices = set()
+    
+    # 按照i进行循环，每次循环遍历一次所有的centroid对应label 0-8
+    for j in range(i):
+        for label in range(centroids_tensor.shape[0]):
+            # 计算每个点到质心的距离
+            distances = torch.norm(x_tensor[:, 3:] - centroids_tensor[label, :], dim=1)
 
+            
+            # 找到距离当前质心最近的点，且该点未被选择过
+            min_distance, min_index = float('inf'), -1
+            for index, distance in enumerate(distances):
+                if distance < min_distance and index not in selected_indices:
+                    min_distance = distance
+                    min_index = index
+            
+            # 如果找到了符合条件的点，则添加到结果列表中，并记录该点的索引
+            if min_index != -1:
+                reassigned_data.append(x[min_index])
+                selected_indices.add(min_index)
+    # 返回重新分配后的数据
+    reassigned_data = [torch.tensor(item, dtype=torch.float32) for item in reassigned_data]
+    return torch.stack(reassigned_data)
 
 def replace_last_three_with_nearest_class_tensor(matrix):
     """
