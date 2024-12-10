@@ -38,8 +38,8 @@ TestX=torch.as_tensor(list(zip(a.flatten(),b.flatten(),c.flatten(),d.flatten(),e
 OLSCALE=1
 #UPB=[1.0, 0.6, 40, 180, 1,1,1000]
 #LOWB=[0.4, 0.1, 5, -180, -1,-1,100]
-UPB=[0.3, 85,0.9,9,9,35]
-LOWB=[0.1, 15,-0.9,0,0,10]
+UPB=[0.6, 75,0.9,9,9,35]
+LOWB=[0.2, 15,-0.9,-9,0,10]
 
 import time
 inittime=time.time()
