@@ -14,7 +14,7 @@ int Num = 1;
 String Sp;
 float CT = 0, CL = 0, CP = 0,Eta=0,ct=0,alp=0;
 float y = 0, angle = 0;
-int resolution = 8, xLengths=16, yLengths=16, zoom = 2;//zoom:画幅放大倍数
+int resolution = 16, xLengths=16, yLengths=16, zoom = 2;//zoom:画幅放大倍数
 int picNum = 10;//图片数量
 float tCurr = 0, tStep = .005;
 int count=0;//OL新加入的变量
@@ -62,7 +62,7 @@ void draw() {
     alp=((test.foil.phi-PI)-atan(vely/resolution));}
     alpha+=alp;
     //print("Eta"+CP/count);
-     print("Eta"+Eta+" alpha"+ alpha/count);
+    print(CT/count+",aaaaaaaaaaaa"+CL/count);
     //output1 = createWriter("vortex/"+str(test.t)+".txt");  // read flow
     //outputN = createWriter("vortex/"+"field.txt");  // read flow
     //ArrayList<PVector> aimcoords = test.foil.coords;
@@ -128,7 +128,7 @@ if (index < control_lines2.size()) {
     PrintWriter output_average1=createWriter("dataY.txt");
     //output_average1.println(CT/count+","+Eta);
     output_average1.println(CT/count+","+CL/count);
-    //print(CT/count+",aaaaaaaaaaaa"+CL/count+','+Eta);
+
     output_average1.close();
     PrintWriter flg=createWriter("flag.txt");
     flg.println("1");//跑完过后把flag改成1

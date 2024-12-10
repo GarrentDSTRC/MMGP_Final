@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 controlFre = 1000
 c=0.06
 U=0.1
-mode="CFD"
+mode="experiment_cluster"
 def generate_waveform( X, folder_name,mode="CFD"):
     # 创建文件夹（如果不存在）
     #St, amplitude2, amplitude, phase_difference, alpha, alpha2=X
@@ -132,17 +132,16 @@ norm=Normalizer()
 X=[0.15,	0.7,	80,	-90,	0	,0]
 x1=[9.45E-01,	3.67E-01,	6.48E-01	,1.48E-01,	3.36E-01,	2.27E-01
 ]
-x=[1.039999961853027344e+00	,6.100000143051147461e-01,	8.799999952316284180e-01,	1.099999994039535522e-01,	1.599999964237213135e-01,	9.100000262260437012e-01,
-]
+x=[1.04E+00,	6.10E-01	,8.80E-01	,1.10E-01,	1.60E-01,	9.10E-01	]
 #[0.30799999833106995, 57.70000076293945, 0.6840000152587891, 0.9900000095367432, 1.4399999380111694, 32.75]
 #x=[6.63E-01	,3.75E-02,	7.38E-01	,6.13E-01,	7.88E-01,	1.25E-02]
 X=norm.denormalize(x).tolist()
-
+print(X)
 
 
 last_col = X[-1]  # Extract the last column
 j=1
-np.savetxt(r'.\MMGP_OL%d\dataX.txt' % (j % 8), np.array([[0, 0, 0, 0, 0, 0, 15, 10000]]),
+np.savetxt(r'.\MMGP_OL%d\dataX.txt' % (j % 8), np.array([[0, 0, 0, 0, X[-3],X[-2], X[-1], 6000]]),
                        delimiter=',', fmt='%d')
-generate_waveform(X[0:3],"MMGP_OL%d"% (j % 8))
+generate_waveform(X[0:3],"MMGP_OL%d"% (j % 8),mode=mode)
 # Test
