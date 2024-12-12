@@ -74,11 +74,12 @@ else:
     train_y1 =torch.tensor( np.loadtxt(pathy2, delimiter=',')).to(torch.float32)
 
     # High fidelity
-    sp = samplingplan(num_input)
-    X = sp.optimallhc(init_sample)
+    # sp = samplingplan(num_input)
+    # X = sp.optimallhc(init_sample)
+    X=torch.FloatTensor(np.loadtxt(r".\Database\train_x_H.csv", delimiter=','))
     if testmode == "experiment_cluster":
         X=replace_last_three_with_nearest_class_tensor(X)
-        I = X.shape[0] // 8 -2
+        I = 8           #(X.shape[0] // 8) 
         X=reassign_centroids( X,I)
     print(X)
     initialDataX = normalizer.denormalize(X)
