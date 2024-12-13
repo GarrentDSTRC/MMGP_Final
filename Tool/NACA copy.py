@@ -39,7 +39,7 @@ from math import atan
 from math import pi
 from math import pow
 from math import sqrt
-
+import pandas as pd
 def linspace(start,stop,np):
     """
     Emulate Matlab linspace
@@ -309,7 +309,7 @@ class Display(object):
         self.ax.legend(self.h, self.label)
         self.plt.show()
 
-def demo(profNaca = ['0009', '2414', '6409'], nPoints = 240, finite_TE = False, half_cosine_spacing = False):
+def demo(profNaca = ['4117', '5617', '7814'], nPoints = 240, finite_TE = False, half_cosine_spacing = False):
     #profNaca = ['0009', '0012', '2414', '2415', '6409' , '0006', '0008', '0010', '0012', '0015']
     d = Display()
     for i,p in enumerate(profNaca):
@@ -318,60 +318,54 @@ def demo(profNaca = ['0009', '2414', '6409'], nPoints = 240, finite_TE = False, 
     d.show()
 
 def main():
-    import os
-    from argparse import ArgumentParser, RawDescriptionHelpFormatter
-    from textwrap import dedent
-    parser = ArgumentParser( \
-        formatter_class = RawDescriptionHelpFormatter, \
-        description = dedent('''\
-            Script to create NACA4 and NACA5 profiles
-            If no argument is provided, a demo is displayed.
-            '''), \
-        epilog = dedent('''\
-            Examples:
-                Get help
-                    python {0} -h
-                Generate points for NACA profile 2412
-                    python {0} -p 2412
-                Generate points for NACA profile 2412 with 300 points
-                    python {0} -p 2412 -n 300
-                Generate points for NACA profile 2412 and display the result
-                    python {0} -p 2412 -d
-                Generate points for NACA profile 2412 with smooth points spacing and display the result
-                    python {0} -p 2412 -d -s
-                Generate points for several profiles
-                    python {0} -p "2412 23112" -d -s     
-                Generate points and rotate with respect to an attack angle
-                    python {0} -p "2412 23112" -d -s -r 20
-            '''.format(os.path.basename(__file__))))
-    parser.add_argument('-p','--profile', type = str, \
-                        help = 'Profile name or set of profiles names separated by spaces. Example: "0009", "0009 2414 6409"')
-    parser.add_argument('-n','--nbPoints', type = int, default = 120, \
-                        help = 'Number of points used to discretize chord. Profile will have 2*nbPoints+1 dots. Default is 120.')
-    parser.add_argument('-s','--half_cosine_spacing', action = 'store_true', \
-                        help = 'Half cosine based spacing, instead of a linear spacing of chord. '\
-                               'This option is recommended to have a smooth leading edge.')
-    parser.add_argument('-f','--finite_TE', action = 'store_true', \
-                        help = 'Finite thickness trailing edge. Default is False, corresponding to zero thickness trailing edge.')
-    parser.add_argument('-d','--display', action = 'store_true', \
-                        help = 'Flag used to display the profile(s).')
-    parser.add_argument('-r','--rotate', type = int, default = 0,\
-                        help = 'Adds an angle of attack rotation.')
-    args = parser.parse_args()
-    if args.profile is None:
-        demo(nPoints = args.nbPoints, finite_TE = args.finite_TE, half_cosine_spacing = args.half_cosine_spacing)
-    else:
-        if args.display:
-            d = Display()
-            for p in args.profile.split(' '):
-                X,Y = naca(p, args.nbPoints, args.finite_TE, args.half_cosine_spacing, args.rotate)
-                d.plot(X, Y, p)
-            d.show()
-        else:
-            for p in args.profile.split(' '):
-                X,Y = naca(p, args.nbPoints, args.finite_TE, args.half_cosine_spacing, args.rotate)
-                for x,y in zip(X,Y):
-                    print(x,y)
+    file_path = 'Database/centroids.csv'
+    naca_params_df = pd.read_csv(file_path, header=None)
+
+
+    import numpy as np
+
+    # 重新定义反归一化的边界
+    UPB = np.array([9, 9, 35])
+    LOWB = np.array([-9, 0, 10])
+
+    # 进行反归一化
+    denormalized_params = LOWB + (UPB - LOWB) * naca_params_df
+
+    # 对反归一化后的值取绝对值
+    denormalized_params_abs = denormalized_params.abs()
+    print(denormalized_params_abs)
+    numpoints = 1000 # 数据点的数量
+    c = 60  # 翼型的弦长
+    # 生成并保存八个CSV文件的循环
+    for i, row in denormalized_params_abs.iterrows():
+        m, p, t = row
+        #x,y=generate_naca_data(m, p, t, i)
+        x,y=naca4(row,numpoints)
+        p=Display()
+        p.plot(x,y)
+        file_name = f'naca_airfoil_{i+1}.txt'
+        # 将数据保存到.txt文件，格式为：x坐标, 上表面y坐标, 下表面y坐标
+        with open(file_name, 'w') as file:
+            for i in range(numpoints):
+                file.write(f"{x[i]*c} {y[i]*c} {0}\n")
+            for i in reversed(range(numpoints)):     
+                file.write(f"{x[i]*c} {y[i]*c} {0}\n")
+    p.show()
+
+    # if args.profile is None:
+    #     demo(nPoints = args.nbPoints, finite_TE = args.finite_TE, half_cosine_spacing = args.half_cosine_spacing)
+    # else:
+    #     if args.display:
+    #         d = Display()
+    #         for p in args.profile.split(' '):
+    #             X,Y = naca(p, args.nbPoints, args.finite_TE, args.half_cosine_spacing, args.rotate)
+    #             d.plot(X, Y, p)
+    #         d.show()
+    #     else:
+    #         for p in args.profile.split(' '):
+    #             X,Y = naca(p, args.nbPoints, args.finite_TE, args.half_cosine_spacing, args.rotate)
+    #             for x,y in zip(X,Y):
+    #                 print(x,y)
 
 if __name__ == "__main__":
     main()
