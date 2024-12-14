@@ -123,7 +123,7 @@ def naca4(number, n, finite_TE = False, half_cosine_spacing = False):
     Returns 2*n+1 points in [0 1] for the given 4 digit NACA number string
     """
 
-    m = float(number[0])/100.0
+    m = -float(number[0])/100.0
     p = float(number[1])/10.0
     t = float(number[2:])/100.0
 
