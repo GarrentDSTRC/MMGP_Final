@@ -20,6 +20,7 @@ denormalized_params = LOWB + (UPB - LOWB) * naca_params_df
 
 # 对反归一化后的值取绝对值
 denormalized_params_abs = denormalized_params
+#denormalized_params_abs[1][5]=1.5
 print(denormalized_params_abs)
 
 # 定义所需的变量
