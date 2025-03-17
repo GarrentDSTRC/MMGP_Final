@@ -24,7 +24,7 @@ def save():
     combined_data.to_csv(os.path.join(output_dir, output_filename), index=False)
 
 # Load the data from the Excel file
-data = pd.read_excel('Tool/train_x2.xlsx')
+data = pd.read_excel('Tool/train_x.xlsx')
 
 # Replace NaN values in the output column with the mean of the non-NaN values
 data.fillna(data.iloc[:, -1].mean(), inplace=True)

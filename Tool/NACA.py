@@ -57,7 +57,7 @@ def naca4(number, n, finite_TE = False, half_cosine_spacing = False):
 
     m = float(number[0])/100.0
     p = float(number[1])/10.0
-    t = float(number[2:])/100.0
+    t = float(number[2])/100.0
 
     a0 = +0.2969
     a1 = -0.1260
@@ -139,8 +139,6 @@ def generate_naca_data(m, p, t, i):
 
 # 生成并保存八个CSV文件的循环
 for i, row in denormalized_params_abs.iterrows():
-    m, p, t = row
-    #x,y=generate_naca_data(m, p, t, i)
     x,y=naca4(row,numpoints)
     p=Display()
     p.plot(x,y)
@@ -153,4 +151,29 @@ for i, row in denormalized_params_abs.iterrows():
             file.write(f"{x[j]*c} {y[j]} {0}\n")
         # for i in reversed(range(numpoints)):     
         #     file.write(f"{x[i]*c} {y[i]*c} {0}\n")
+p.show()
+
+
+i+=1
+c=90
+num=(0,0,12)
+x,y=naca4(num,numpoints)
+p=Display()
+p.plot(x,y)
+file_name = f'naca_airfoil_{i+1}.txt'
+with open(file_name, 'w') as file:
+    for j in range(len(x)):
+        y[j] = y[j]*c+i * c
+        file.write(f"{x[j]*c} {y[j]} {0}\n")
+
+i+=1
+c=120
+x,y=naca4(num,numpoints)
+p=Display()
+p.plot(x,y)
+file_name = f'naca_airfoil_{i+1}.txt'
+with open(file_name, 'w') as file:
+    for j in range(len(x)):
+        y[j] = y[j]*c+i * c
+        file.write(f"{x[j]*c} {y[j]} {0}\n")
 p.show()
