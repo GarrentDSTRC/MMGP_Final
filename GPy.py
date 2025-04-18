@@ -8,7 +8,7 @@ from scipy.interpolate import griddata
 import numpy as np
 from scipy.stats import norm
 import random
-from TWarping import generate_waveform
+from TWarpingDehan import generate_waveform
 from pprint import pprint
 from gpytorch.priors import NormalPrior
 from deap import algorithms, base, creator, tools
@@ -152,11 +152,11 @@ def findpointOL(X,num_task=1,mode="experiment"):
             for j in range(8):
                 flag=np.loadtxt(r'.\MMGP_OL%d\flag.txt'%(j%8), delimiter=",", dtype="int")
 
-                while flag==0:
+                while flag==1:
                     try:
                         flag=np.loadtxt(r'.\MMGP_OL%d\flag.txt'%(j%8), delimiter=",", dtype="int")
                     finally:
-                        time.sleep(25)
+                        #time.sleep(25)
                         print("程序运行时间",(time.time()-inittime)/3600)
                 all_Y.append(np.loadtxt(r'.\MMGP_OL%d\dataY.txt'%(j%8), delimiter=",", dtype="float"))
         all_Y=np.asarray(all_Y)

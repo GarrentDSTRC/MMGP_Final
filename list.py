@@ -11,7 +11,7 @@ import os
 import numpy as np
 import random
 from GPy import *
-testmode="CFD"#DTLZ#WFG
+testmode="experiment_cluster"#DTLZ#WFG
 path1 = r".\Database\x.csv"
 path2 = r".\Database\y.csv"
 X = np.loadtxt(path1, delimiter=',')
