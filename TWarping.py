@@ -4,9 +4,9 @@ from scipy.interpolate import interp1d
 
 import matplotlib.pyplot as plt
 
-controlFre = 1000
-c=1
-U=1
+controlFre = 3000
+c=0.08
+U=0.1
 mode="experiment_cluster"
 def generate_waveform( X, folder_name,mode="CFD"):
     # 创建文件夹（如果不存在）
@@ -79,7 +79,7 @@ def generate_waveform( X, folder_name,mode="CFD"):
 
     with open(os.path.join(folder_name, "control.txt"), "w") as f:
         for value in z_uniform:
-                f.write(str(value) + "\n")
+                f.write(str(value*100*4.5) + "\n")
     # 保存第二个波形到文件
     with open(os.path.join(folder_name, "control2.txt"), "w") as f2:
         if mode == "CFD":
@@ -87,7 +87,7 @@ def generate_waveform( X, folder_name,mode="CFD"):
                 f2.write(str(value) + "\n")
         else:
             for value in z_uniform2:
-                f2.write(str(value*c) + "\n")
+                f2.write(str(value*180/np.pi*3) + "\n")
 
 
     # 绘制第一个波形
