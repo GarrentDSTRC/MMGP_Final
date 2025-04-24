@@ -25,7 +25,7 @@ print(denormalized_params_abs)
 
 # 定义所需的变量
 numpoints = 1000 # 数据点的数量
-c = 60  # 翼型的弦长
+c = 100  # 翼型的弦长
 class Display(object):
     def __init__(self):
         import matplotlib.pyplot as plt
@@ -147,7 +147,7 @@ for i, row in denormalized_params_abs.iterrows():
     # 将数据保存到.txt文件，格式为：x坐标, 上表面y坐标, 下表面y坐标
     with open(file_name, 'w') as file:
         for j in range(len(x)):
-            y[j] = y[j]*c+i * c
+            y[j] = y[j]*c+i * 60
             file.write(f"{x[j]*c} {y[j]} {0}\n")
         # for i in reversed(range(numpoints)):     
         #     file.write(f"{x[i]*c} {y[i]*c} {0}\n")
