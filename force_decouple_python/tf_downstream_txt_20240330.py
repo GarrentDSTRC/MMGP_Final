@@ -50,7 +50,7 @@ def process_data_and_calculate_metrics(raw_data,T):
     #h0_theta0[1] = (h0_theta0[1] - (tmax + tmin) / 2) /5.0*2*np.pi   # 平均归零, 弧度 rad, 5V=360deg
 
     # Decouple forces
-    decoupled_force = decouple_matrix @ ((raw_data[1:7] * 1000.) / (EXC * GAIN))
+    decoupled_force = decouple_matrix @ (raw_data[1:7] ) * (GAIN)
     filtered_force = signal.filtfilt(b, a, decoupled_force)
 
     # Calculate thrust, lift, and moments in body coordinates
