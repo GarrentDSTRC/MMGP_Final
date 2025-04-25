@@ -54,9 +54,9 @@ def main_sample(duration, T):
 
             # 数据处理（保持与原代码一致的结构）
             data_array = np.array(data)
-            if np.max(data_array[:,0])>4 or np.max(data_array[:,0])<-4:
+            if np.max(data_array[0,:])>4 or np.max(data_array[0,:])<-4:
                 os._exit()
-            print("oringal sample",data_array[-1,:])
+            print("oringal sample",data_array[:,-1])
 
             collected_data.append(data_array)
             print(f"Collected {cycles} samples per channel")
