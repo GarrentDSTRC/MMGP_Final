@@ -1,7 +1,7 @@
 import nidaqmx
 import numpy as np
 import time
-
+import os
 def main_sample(duration, T):
     # 初始化设备
     system = nidaqmx.system.System.local()
@@ -16,7 +16,7 @@ def main_sample(duration, T):
     # 采样参数配置
     frequency = 500  # 采样频率 (Hz)
     channels = list(range(8))  # 通道列表 0-7
-    cycles = int(16 * 500 * T)  # 总采样点数（每个通道）
+    cycles = int(500)  # 总采样点数（每个通道）
     
     collected_data = []
     start_time = time.time()
@@ -46,7 +46,7 @@ def main_sample(duration, T):
             try:
                 data = task.read(
                     number_of_samples_per_channel=cycles,
-                    timeout=300
+                    timeout=2
                 )
             except nidaqmx.DaqError as e:
                 print(f"Error reading data: {e}")
@@ -54,9 +54,8 @@ def main_sample(duration, T):
 
             # 数据处理（保持与原代码一致的结构）
             data_array = np.array(data)
-            if data_array.shape != (len(channels), cycles):
-                print(f"Unexpected data shape: {data_array.shape}")
-                continue
+            if np.max(data_array[0])>4 or np.max(data_array[0])<-4:
+                os._exit()
 
             collected_data.append(data_array)
             print(f"Collected {cycles} samples per channel")
