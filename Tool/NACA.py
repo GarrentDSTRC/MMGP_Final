@@ -155,7 +155,8 @@ p.show()
 
 
 i+=1
-c=90
+c1=60
+print(i+1)
 num=(0,0,12)
 x,y=naca4(num,numpoints)
 p=Display()
@@ -163,11 +164,10 @@ p.plot(x,y)
 file_name = f'naca_airfoil_{i+1}.txt'
 with open(file_name, 'w') as file:
     for j in range(len(x)):
-        y[j] = y[j]*c+i * c
+        y[j] = y[j]*c+i * c1
         file.write(f"{x[j]*c} {y[j]} {0}\n")
 
 i+=1
-c=120
 x,y=naca4(num,numpoints)
 p=Display()
 p.plot(x,y)

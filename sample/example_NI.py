@@ -14,9 +14,9 @@ def main_sample(duration, T):
     print(f"Device {device_name} detected.")
 
     # 采样参数配置
-    frequency = 500  # 采样频率 (Hz)
+    frequency = 1000  # 采样频率 (Hz)
     channels = list(range(8))  # 通道列表 0-7
-    cycles = int(500)  # 总采样点数（每个通道）
+    cycles = int(frequency)  # 总采样点数（每个通道）
     
     collected_data = []
     start_time = time.time()
@@ -32,15 +32,15 @@ def main_sample(duration, T):
             task.timing.cfg_samp_clk_timing(
                 rate=frequency,
                 sample_mode=nidaqmx.constants.AcquisitionType.FINITE,
-                samps_per_channel=cycles
+                samps_per_chan=cycles
             )
 
             # 配置软件触发
-            task.triggers.start_trigger.cfg_software_start_trig()
+            #task.triggers.start_trigger.cfg_software_start_trig()
 
             # 启动任务并触发
             task.start()
-            task.start_trigger()  # 发送软件触发信号
+            #task.start_trigger()  # 发送软件触发信号
 
             # 读取数据
             try:
