@@ -29,15 +29,15 @@ def process_data_and_calculate_metrics(raw_data,T):
     thrust0 =-0.8681423771634483#-0.717
     lift0   =0.12947006782422754 #  0.275-0.099
     mz0     =-0.0021261342483011817 # -0.00118-0.003
-    c = 0.08
-    s = 0.22
+    c = 0.1
+    s = 0.26
     U = 0.1
 
     # Filtering parameters
     b, a = signal.butter(1, 0.01, 'lowpass')
 
     # Process raw data
-    h0_theta0 = np.array([raw_data[7], raw_data[0]])
+    h0_theta0 = np.array([raw_data[6], raw_data[7]])
     h0_theta0_filtered = signal.filtfilt(b, a, h0_theta0)
 
     # Normalize measurements
@@ -50,7 +50,7 @@ def process_data_and_calculate_metrics(raw_data,T):
     #h0_theta0[1] = (h0_theta0[1] - (tmax + tmin) / 2) /5.0*2*np.pi   # 平均归零, 弧度 rad, 5V=360deg
 
     # Decouple forces
-    decoupled_force = decouple_matrix @ (raw_data[1:7] ) * (GAIN)
+    decoupled_force = decouple_matrix @ (raw_data[0:6] ) * (GAIN)
     filtered_force = signal.filtfilt(b, a, decoupled_force)
 
     # Calculate thrust, lift, and moments in body coordinates
@@ -153,7 +153,7 @@ def process_data_and_calculate_metricsETA2(raw_data,T):
     b, a = signal.butter(1, 0.01, 'lowpass')
 
     # Process raw data
-    h0_theta0 = np.array([raw_data[7], raw_data[0]])
+    h0_theta0 = np.array([raw_data[6], raw_data[7]])
     h0_theta0_filtered = signal.filtfilt(b, a, h0_theta0)
 
     # Normalize measurements
@@ -165,7 +165,7 @@ def process_data_and_calculate_metricsETA2(raw_data,T):
     #h0_theta0[1] = (h0_theta0[1] - (tmax + tmin) / 2) /5.0*2*np.pi   # 平均归零, 弧度 rad, 5V=360deg
 
     # Decouple forces
-    decoupled_force = decouple_matrix @ ((raw_data[1:7] * 1000.) / (EXC * GAIN))
+    decoupled_force = decouple_matrix @ ((raw_data[0:6] * 1000.) / (EXC * GAIN))
     filtered_force = signal.filtfilt(b, a, decoupled_force)
 
     # Calculate thrust, lift, and moments in body coordinates
