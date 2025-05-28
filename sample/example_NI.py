@@ -54,9 +54,9 @@ def main_sample(duration, T):
 
             # 数据处理（保持与原代码一致的结构）
             data_array = np.array(data)
-            if np.max(data_array[0,:])>4 or np.max(data_array[0,:])<-4:
-                os._exit()
-            print("oringal sample",data_array[:,-1])
+            
+            # if np.max(data_array[0,:])>4 or np.max(data_array[0,:])<-4:
+            #     os._exit()
 
             collected_data.append(data_array)
             print(f"Collected {cycles} samples per channel")
@@ -69,7 +69,10 @@ def main_sample(duration, T):
     all_data = np.concatenate(collected_data, axis=1)
     
     # 转置为通道在列的格式（与原代码一致）
-    transposed_data = all_data.T  # 转置后形状为 (总采样点数, 8通道)
-    
+    transposed_data = all_data  # 转置后形状为 (总采样点数, 8通道)
+    A=np.array(transposed_data.tolist())
+    print('采集的形状',np.array(A).shape)
     # 转换为列表格式返回
     return transposed_data.tolist()
+# A=main_sample(9.8,1)
+# print(np.array(A).shape)

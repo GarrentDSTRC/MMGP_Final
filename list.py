@@ -12,7 +12,7 @@ import numpy as np
 import random
 from GPy import *
 testmode="CFD"#DTLZ#WFG
-path1 = r".\Database\x.csv"
+path1 = r".\Database\RUN24.csv"
 path2 = r".\Database\y.csv"
 X = np.loadtxt(path1, delimiter=',')
 X = normalizer.denormalize(X)

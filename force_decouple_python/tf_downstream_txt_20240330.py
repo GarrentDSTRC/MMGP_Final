@@ -23,22 +23,29 @@ def process_data_and_calculate_metrics(raw_data,T):
     decouple_matrix = np.array(decouple_mix, dtype=np.float64)
 
     gain_mix = pd.read_csv('force_decouple_python/m8301c_use/gain.csv')
-    GAIN = np.array(gain_mix.iloc[0:6], dtype=np.float64)
+    GAIN = np.array(gain_mix.iloc[0:6].values, dtype=np.float64)  # 转换为一维数组
     EXC = gain_mix.iloc[6].value
 
-    thrust0 =-0.8681423771634483#-0.717
-    lift0   =0.12947006782422754 #  0.275-0.099
-    mz0     =-0.0021261342483011817 # -0.00118-0.003
+    thrust0 =0-2.616743066117693
+    lift0=0-0.2960626632025338
+    mz0     = 0-0.01352094968883618 
+
+    # thrust0 =-3.4353475307048167+0.11
+    # lift0   =0.8068036795293653
+    # mz0     =0
+
+    
     c = 0.1
     s = 0.26
-    U = 0.1
+    U = 0.05
 
     # Filtering parameters
     b, a = signal.butter(1, 0.01, 'lowpass')
 
     # Process raw data
     h0_theta0 = np.array([raw_data[6], raw_data[7]])
-    h0_theta0_filtered = signal.filtfilt(b, a, h0_theta0)
+    h0_theta0[0]=-1*h0_theta0[0]
+    h0_theta0_filtered = signal.filtfilt(b, a, h0_theta0,axis=1)
 
     # Normalize measurements
     hmin, hmax = np.amin(h0_theta0_filtered[0]), np.amax(h0_theta0_filtered[0])
@@ -50,14 +57,147 @@ def process_data_and_calculate_metrics(raw_data,T):
     #h0_theta0[1] = (h0_theta0[1] - (tmax + tmin) / 2) /5.0*2*np.pi   # 平均归零, 弧度 rad, 5V=360deg
 
     # Decouple forces
-    decoupled_force = decouple_matrix @ (raw_data[0:6] ) * (GAIN)
+    # print(decouple_matrix.shape)
+    # print(GAIN)
+    #decoupled_force =(((np.array(raw_data[0:6]).T)@decouple_matrix).T)       * (GAIN).tolist()
+    #decoupled_force =(np.array(raw_data[0:6])    )  * (GAIN).tolist()##略好 但y是反方向
+    raw_Force=np.array(raw_data[0:6])
+    raw_Force[2,:]=raw_Force[2,:]*0
+
+    decoupled_force =decouple_matrix@np.array(raw_Force)  * (GAIN).tolist()   ###x反 y正
+    print(decoupled_force.shape)
     filtered_force = signal.filtfilt(b, a, decoupled_force)
+
+    filtered_force[0]-=thrust0
+    filtered_force[1]-=lift0
+    filtered_force[5]-=mz0
+
+    print(filtered_force[0].shape )
+    print(h0_theta0_filtered.shape)
+    print(len(raw_data))
+    # Calculate thrust, lift, and moments in body coordinates
+    # 将受力正方向和运动正方向设置为相同
+    # 转动逆时针为正
+    
+    thrust = -filtered_force[0] * np.cos(h0_theta0_filtered[1]) - filtered_force[1] * np.sin( h0_theta0_filtered[1])   ## 推力方向为正
+    lift   = -filtered_force[0] * np.sin(h0_theta0_filtered[1]) + filtered_force[1] * np.cos(h0_theta0_filtered[1])    ## vy为正
+    n=1000
+    #print("4个",filtered_force[0][::n], np.cos(h0_theta0_filtered[1][::n]), filtered_force[1][::n], np.sin(h0_theta0_filtered[1][::n]),lift[::n])
+    mz     = -filtered_force[5]                                                                                       ## 俯视图 逆时针为正
+    #减小 不变
+    print("零点",np.mean(filtered_force[0]),np.mean(filtered_force[1]),np.mean(filtered_force[5]))
+
+    Ct     = thrust/(0.5*1000*U*U*c*s)
+    Cl     = lift/(0.5*1000*U*U*c*s)
+    Cpt    = thrust * U
+
+    dim    = h0_theta0_filtered.shape[1]
+    vy2     = np.zeros(dim)
+    wz2     = np.zeros(dim)
+    vy2[1:dim-1] = (h0_theta0_filtered[0,2:] - h0_theta0_filtered[0,0:dim-2]) /0.004 # 2个时间步差分
+    wz2[1:dim-1] = (h0_theta0_filtered[1,2:] - h0_theta0_filtered[1,0:dim-2]) /0.004
+
+    #Pout                 =  -lift * vy2 + mz * wz2  ##
+    #Cpin                 = (-lift * vy2 - mz * wz2)/ (0.5 * 1000 * c * s * U * U * U) ##
+    Cp_heave             = -lift * vy2 / (0.5 * 1000 * c * s * U * U * U)  # heave输入功率
+    Cp_pitch             = -mz * wz2 / (0.5 * 1000 * c * s * U * U * U)  # pitch输入功率
+    Cpin                 = Cp_heave + Cp_pitch
+
+    Ct_mean   = np.zeros(Ct.shape[0])+1.0e-9
+    Cl_mean   = np.zeros(Ct.shape[0])+1.0e-9
+    Cpin_mean = np.zeros(Ct.shape[0])+1.0e-9
+    Eta       = np.zeros(Ct.shape[0])+1.0e-9
+    Energy_eta       = np.zeros(Ct.shape[0])+1.0e-9
+    Energy_eta2 = np.zeros(Ct.shape[0]) + 1.0e-9
+
+    num_period = int(1000*T)
+    alpha=0
+    for i in range(Ct.shape[0]-num_period-1):
+        Ct_mean[i]   = np.mean( Ct[i:i+num_period] )
+        Cl_mean[i]   = np.mean( Cl[i:i+num_period] )
+        Cpin_mean[i] = np.mean( Cpin[i:i+num_period] )
+        Eta[i]       = Ct_mean[i]/Cpin_mean[i]
+
+        #Energy_eta2[i] = np.mean(Pout[i:i + num_period]) / (0.5 * 1000 * U * U * U * 1.2 * 2 * c * s)
+
+        #Energy_eta[i]=Cpin_mean[i] *c /(2*( np.amax(h0_theta0_filtered[0])- np.amin(h0_theta0_filtered[0]) ))
+
+        if (vy2[i] < 0):
+            alp=-(( h0_theta0_filtered[1][i]-math.pi) -np.arctan(vy2[i]/U))
+        else :
+            alp=((h0_theta0_filtered[1][i]-math.pi)-np.arctan(vy2[i]/U ))
+        alpha += alp
+
+
+    filterd_data_aug = np.vstack((h0_theta0_filtered, filtered_force, thrust, lift, mz, vy2, wz2, Ct_mean, Cpin_mean, Eta))  #(5, N) h0,theta0,fy(指向thrust),fx(指向lift),mz
+    now = datetime.datetime.now()
+    timestamp = now.strftime('%Y_%m_%d_%H_%M_%S')
+    cun = np.mean(Ct_mean[:-num_period])
+    # 将Eta的平均值转换为字符串，并保留两位小数
+    cun = f"{cun:.3f}"
+    
+    cun2 = np.mean(Eta[:-num_period])
+    # 将Eta的平均值转换为字符串，并保留两位小数
+    cun2 = f"{cun2:.3f}"
+
+
+    filename = f"force_decouple_python\\raw_data\\CT{timestamp}_{cun}.csv"
+
+    op = pd.DataFrame(filterd_data_aug.T[:-num_period],columns=['h0','theta0','fx','fy','fz','mx','my','mz','f_thrust','f_lift','mz','vy','wz','Cd','Cpout','Eta'])
+    #op.to_csv(opfile[:-4]+'b.csv')
+    op.to_csv(filename)
+
+    return np.mean(Ct_mean[:-num_period]), np.mean(Cl_mean[:-num_period])
+    #return np.mean(thrust), np.mean(lift)
+
+
+def process_data_and_calculate_metricsNOUSE(raw_data,T):
+    # Load matrices and constants
+    decouple_mix = pd.read_csv('force_decouple_python/m8301c_use/decoupled.csv', sep=',', header=None)
+    decouple_matrix = np.array(decouple_mix, dtype=np.float64)
+    print(decouple_mix.shape)  # 应输出 (6, 6)
+    print(decouple_mix.head()) # 查看前几行
+
+    gain_mix = pd.read_csv('force_decouple_python/m8301c_use/gain.csv')
+    GAIN = np.array(gain_mix.iloc[0:6].values.flatten(), dtype=np.float64)  # 转换为一维数组
+    EXC = gain_mix.iloc[6].value
+
+    thrust0 =0
+    lift0   =0
+    mz0     =0
+    c = 0.1
+    s = 0.26
+    U = 0.1
+
+    # Filtering parameters
+    b, a = signal.butter(1, 0.01, 'lowpass')
+
+    # Process raw data
+    #方向重新定义为向下为正
+    print("raw_data",raw_data.shape)
+    h0_theta0 = np.array([raw_data[:,6], raw_data[:,7]])
+    h0_theta0[0]=h0_theta0[0]*-1
+    h0_theta0_filtered = signal.filtfilt(b, a, h0_theta0, axis=1, padlen=6)
+
+    # Normalize measurements
+    hmin, hmax = np.amin(h0_theta0_filtered[0]), np.amax(h0_theta0_filtered[0])
+    tmin, tmax = np.amin(h0_theta0_filtered[1]), np.amax(h0_theta0_filtered[1])
+    h0_theta0_filtered[0] = (h0_theta0_filtered[0] - (hmax + hmin) / 2) / 1.250 * 0.1  ## M
+    h0_theta0_filtered[1] = (h0_theta0_filtered[1] -(tmax + tmin) / 2) / 5.0 * 2 * np.pi ## rad
+
+    #h0_theta0[0]          = (h0_theta0[0]         -  (hmax + hmin) / 2) / 1.25  * 0.1     # 平均归零, 长度 m,   1.247V=0.1m
+    #h0_theta0[1] = (h0_theta0[1] - (tmax + tmin) / 2) /5.0*2*np.pi   # 平均归零, 弧度 rad, 5V=360deg
+
+    # Decouple forces
+    decoupled_force = (raw_data[:,0:6] )@decouple_matrix * (GAIN)
+    filtered_force = signal.filtfilt(b, a, decoupled_force, axis=0, padlen=6)
 
     # Calculate thrust, lift, and moments in body coordinates
     # 将受力正方向和运动正方向设置为相同
     # 转动逆时针为正
-    thrust = -filtered_force[0] * np.sin(h0_theta0_filtered[1]) + filtered_force[1] * np.cos( h0_theta0_filtered[1]) - thrust0  ## 推力方向为正
-    lift   = -filtered_force[0] * np.cos(h0_theta0_filtered[1]) - filtered_force[1] * np.sin(h0_theta0_filtered[1])  - lift0    ## vy为正
+    thrust = -filtered_force[:, 0] * np.cos(h0_theta0_filtered[1]) + filtered_force[:, 1] * np.sin(h0_theta0_filtered[1]) - thrust0
+    lift = -filtered_force[:, 0] * np.sin(h0_theta0_filtered[1]) - filtered_force[:, 1] * np.cos(h0_theta0_filtered[1]) - lift0
+
     n=1000
     #print("4个",filtered_force[0][::n], np.cos(h0_theta0_filtered[1][::n]), filtered_force[1][::n], np.sin(h0_theta0_filtered[1][::n]),lift[::n])
     mz     = -filtered_force[5] - mz0                                                                                           ## 俯视图 逆时针为正
@@ -67,8 +207,8 @@ def process_data_and_calculate_metrics(raw_data,T):
     Ct     = thrust/(0.5*1000*U*U*c*s)
     Cl     = lift/(0.5*1000*U*U*c*s)
     Cpt    = thrust * U
-
-    dim    = h0_theta0_filtered.shape[1]
+    print(h0_theta0_filtered.shape)
+    dim    = h0_theta0_filtered.shape[0]
     vy2     = np.zeros(dim)
     wz2     = np.zeros(dim)
     vy2[1:dim-1] = (h0_theta0_filtered[0,2:] - h0_theta0_filtered[0,0:dim-2]) /0.004 # 2个时间步差分

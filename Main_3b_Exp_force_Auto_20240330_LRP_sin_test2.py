@@ -43,9 +43,9 @@ def reset_flag(dir_path):
 def improved_sigmoid_alpha(i):
     N = Flaps / 2
     if 0 <= i <= N:
-        return 0.5 * (1 + np.tanh((4 * (i-1)) / 1))
+        return 0.5 * (1 + np.tanh((2 * (i-1)) / 1))
     elif N < i <= 2 * N:
-        return 0.5 * (1 + np.tanh((4 * (2 * N - (i+1))) / 1))
+        return 0.5 * (1 + np.tanh((2 * (2 * N - (i+1))) / 1))
     else:
         return 0
 
@@ -61,8 +61,8 @@ def motor_control(can_dict, T, datap, datah):
         Now = time.time()
         periodtime = (Now - Start) / T
         periodtick = periodtime % 1
-        can_dict['pitch_1'] = datap[int(periodtick * len(datap))] * improved_sigmoid_alpha(periodtime)*-1
-        can_dict['heave_1'] = datah[int(periodtick * len(datap))] * improved_sigmoid_alpha(periodtime)
+        can_dict['pitch_1'] = (datap[int(periodtick * len(datap))] * improved_sigmoid_alpha(periodtime)+80)*-1
+        can_dict['heave_1'] = datah[int(periodtick * len(datap))] * improved_sigmoid_alpha(periodtime)*-1
         i += 1
     print("Motor control finished")
 
@@ -70,12 +70,14 @@ def daq_collection(T):
     global global_results
     time.sleep(2*T)  # 等待电机稳定
     print(' ---DAQ software started--- ')
+    print(T * (Flaps - 4),T)
     result = main_sample(T * (Flaps - 4),T)
 
 
 
     print(' ---DAQ software finished--- ')
     time.sleep(3*T)
+
     CT, ETA = process_data_and_calculate_metrics(result,T)
     global_results=[CT,  ETA]  # 将结果放入全局变量
     print("Results put into global_results")
@@ -112,7 +114,7 @@ def execute_experiment(folder,can_dict):
 
 
     global global_results
-    print(f"Got results from global_results: CT={global_results[0]}, ETA={global_results[1]}")
+    print(f"Got results from global_results: CT={global_results[0]}, CL={global_results[1]}")
     data_y_path = os.path.join(dir_path, 'dataY.txt')
     np.savetxt(data_y_path, [global_results], delimiter=',', fmt='%0.4f')
     reset_flag(dir_path)  # 实验完成后重置标志
