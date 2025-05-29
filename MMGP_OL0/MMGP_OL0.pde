@@ -14,7 +14,7 @@ int Num = 1;
 String Sp;
 float CT = 0, CL = 0, CP = 0,Eta=0,ct=0,alp=0;
 float y = 0, angle = 0;
-int resolution = 8, xLengths=16, yLengths=16, zoom = 2;//zoom:画幅放大倍数
+int resolution = 32, xLengths=16, yLengths=16, zoom = 2;//zoom:画幅放大倍数
 int picNum = 10;//图片数量
 float tCurr = 0, tStep = .005;
 int count=0;//OL新加入的变量
@@ -22,6 +22,8 @@ int testcount=1;
 float nacaName1 = 0,nacaName2 = 0,nacaName3 = 15;//初始翼型
 float previoush = 0,h=0,control_value=0,control_value2=0,maxControlLines=0.1,maxControlLines2=0.1,alpha=0,EtaCtCp;
 float previousTime = 0;
+float init=0;
+float initphivel=0;
 import java.util.ArrayList;
 ArrayList<String> control_lines = new ArrayList<String>();
 ArrayList<String> control_lines2 = new ArrayList<String>();
@@ -121,9 +123,16 @@ if (index < control_lines2.size()) {
   }
   
   
-  if (test.t>=maxT/20*20 || testcount==1) {
+  if (testcount==1)
+  {
+    init=test.foil.phi;
+    initphivel=phivel;
+  }
+  
+  
+  if (test.t>=25&  abs(test.foil.phi-init)<0.3  & initphivel*phivel>0 || testcount==1) {
     dat.finish();
-   if (test.t>=maxT/20*20 ){
+   if (test.t>=25 &  abs(test.foil.phi-init)<0.3 & initphivel*phivel>0 ){
       // 写入结果, 更改flag;
     PrintWriter output_average1=createWriter("dataY.txt");
     //output_average1.println(CT/count+","+Eta);
