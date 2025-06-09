@@ -4,7 +4,7 @@ from scipy.spatial.distance import cdist
 
 
 # Load the new data file without headers
-data_df2 = pd.read_csv('Database/train_x.csv', header=None)
+data_df2 = pd.read_csv('Database/32_x1.csv', header=None)
 centroids_df = pd.read_csv('Database/centroids.csv', header=None)
 
 # Extract the last three columns for each row in the data
@@ -21,7 +21,7 @@ for i, index in enumerate(closest_centroids_indices2):
     data_df2.iloc[i, -3:] = centroids_df.iloc[index].values
 
 # Save the modified data
-output_path2_corrected = 'x2_modified_corrected.csv'
+output_path2_corrected = '32_x1_modified_corrected.csv'
 data_df2.to_csv(output_path2_corrected, index=False, header=False)
 
 
