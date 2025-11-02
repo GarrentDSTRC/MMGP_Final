@@ -88,7 +88,7 @@ def generate_waveform( X, folder_name,mode="CFD"):
 
     with open(os.path.join(folder_name, "control.txt"), "w") as f:
         for value in z_uniform:
-                f.write(str(value*180/np.pi*3) + "\n")
+                f.write(str(value*180/np.pi) + "\n")
     # 保存第二个波形到文件
     with open(os.path.join(folder_name, "control2.txt"), "w") as f2:
         if mode == "CFD":

@@ -1,0 +1,133 @@
+algo: tppo
+envparameters:
+  action_continuous: true
+  action_space: 3
+  n_player: 1
+  obs_continuous: true
+  obs_space: 13
+  action_interval: 1
+  action_max: 12.0  #WASTED
+  action_max_0: 1.0
+  action_max_1: 0.3
+  mlp: false
+  boots_num: 4
+scenario: iff
+hyperparameters:
+  mode: 'separate_Q'
+  sigma_type: 'share'  #share or variable
+  n_ensemble: 8
+  load_pretrained: false
+  load_actor: true
+  load_critic: false
+  load_cost: false
+  cls: false
+  batch_size: 256
+  offline_batch_size: 1600
+  buffer_capacity: 10000
+  c_lr: 0.0006 #0.005
+  a_lr: 0.0001
+  q_lr: 0.001 #0.0005
+  context_len: 40
+  n_layer: 2
+  n_head: 2  #2
+  n_embed: 64  #32
+  gamma: 0.99
+  ppo_epoch: 8
+  ppo_clip: 0.2
+  ppo_entropy: 0.01
+  grad_norm_clip: 0.5
+  gae_lambda: 0.95
+  St: 0.2
+  AD: 0.1
+  theta: 70
+  Phi: 190
+  is_double_q: false #IQL
+  sa_type: 'separate' #'separate' or 'concat'
+  omega: 0.8
+  target_update_freq: 4
+  tau: 0.005
+  # actor_path: '/home/iff/drlenv/src/iffenv/src/off2on_models/actor_1_6499.pth'
+  # actor_path: '/home/iff/drlenv/src/iffenv/src/pretrained_models/actor_10113_09_09_17_43.pth'
+  # critic_path: '/home/iff/drlenv/src/iffenv/src/off2on_models/V_new_best_118_0.2348.pth'
+  # critic_path: '/home/iff/drlenv/src/iffenv/src/pretrained_models/critic_best_0930.pth'
+  actor_path: '/home/iff/drlenv/src/iffenv/src/off2on_models3/fy_sh/actor_3.pth'
+  critic_path: '/home/iff/drlenv/src/iffenv/src/off2on_lim07/value/V_new_best_85_0.7248.pth'
+  # actor_path: '/home/iff/drlenv/src/iffenv/src/off2on_model_mlp2/actor_3_2869.pth'
+  # critic_path: '/home/iff/drlenv/src/iffenv/src/off2on_model_mlp2/V_new_best_24_0.8371.pth'
+  train_target: 1
+transition:
+  d_lr: 0.001
+  prediction_type: 'original' #'original' f(s,a) -> s' or 'delta' f(s,a) -> s'-s
+  uncertainty_mode: 'aleatoric'
+  sa2s: true #if true E(s)+E(a)->s'; false E(s)->s', E is encoder
+seedparameters:
+  seed_nn: 1
+  seed_np: 1
+  seed_random: 1
+trainingparameters:
+  evaluate_rate: 50
+  max_episodes: 300
+  render: false
+  save_interval: 100
+IFF:
+  n_iff: 8
+  interval: 10
+  excution_time: 0.035
+  steady_time: 0.0  #steady observations
+  control_frequency: 20
+  motor_velocity: 0.15
+  refresh_time: 18
+  starting_index: 0 #Default=0
+  bf_directory: "PARETO/EMOA_pareto"
+  r_alpha: 1.2
+  r_beta: 0.4
+  r_gamma: 0.1
+  mid_values: [
+    187, 146, 190, 
+    186, 186, 196, 
+    190, 174, 173, 
+    182, 180, 184, 
+    184, 182, 173, 
+    182, 175, 183, 
+    182, 180, 85,  
+    184, 183, 195
+    ]
+LPFilter: #wasted
+  sample_rate: 220
+  cutoff_freq: 10.0
+  order: 5
+time_weight: 50
+y_weight: 0
+alpha_weight: 50
+rl_train: true
+save: true
+seed: 20241019
+rl_directory: "RLtest/TPPO"
+cl_list_len: 20
+# Safe:
+c_target: 0.7
+c_alpha: 0.05
+c_beta: 0.5
+c_gamma: 0.3
+# The Kp of PID controller
+pid_kp: 0.1
+# The Ki of PID controller
+pid_ki: 0.01
+# The Kd of PID controller
+pid_kd: 0.01
+#The delay of PID controller
+pid_d_delay: 10
+# The exponential moving average alpha of the proportional term of the PID controller.
+pid_delta_p_ema_alpha: 0.95
+# The exponential moving average alpha of the derivative term of the PID controller.
+pid_delta_d_ema_alpha: 0.95
+# Whether to normalize the sum of the cost.
+sum_norm: True
+# Whether to normalize the derivate of the cost.
+diff_norm: False
+# Tolerance of constraint violation
+cost_limit: 25.0
+# The max penalty coefficient
+penalty_max: 100.0
+# Initial value of lagrangian multiplier
+lagrangian_multiplier_init: 0.001

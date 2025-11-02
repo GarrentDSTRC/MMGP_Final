@@ -1,0 +1,277 @@
+import time
+
+from env.flow_field_env import fake_env, foil_env
+import argparse
+import json
+from model.online_gpt_model import GPTConfig, GPT
+from framework.utils import set_seed, ConfigDict, make_logpath
+from framework.logger import LogServer, LogClient
+# from framework.buffer import OnlineBuffer
+from framework.IQL import IQL_Q_V
+from framework.trainer1 import TPPO
+from framework import utils
+from framework.normalization import RewardScaling, Normalization
+from model.sin_policy import SinPolicy
+# from model.parametric_policy import parametric_agent
+from datetime import datetime, timedelta
+import wandb
+import numpy as np
+from tqdm import tqdm
+import gym
+import pickle
+import torch
+import torch.nn as nn
+from torch.utils.data.sampler import BatchSampler, RandomSampler, SequentialSampler
+import matplotlib.pyplot as plt
+import csv
+import os
+
+from env.IFF_env_2 import ServoControlEnv
+
+def prepare_arguments():
+    parser = argparse.ArgumentParser()
+    # Required_parameter
+    parser.add_argument("--config-file", "--cf", default="./config/config.json",
+                        help="pointer to the configuration file of the experiment", type=str)
+    args, unknown = parser.parse_known_args()
+    args.config = json.load(open(args.config_file, 'r', encoding='utf-8'))
+    print(args.config)
+
+    ### set seed
+    if args.config['seed'] == "none":
+        args.config['seed'] = datetime.now().microsecond % 65536
+        args.seed = args.config['seed']
+    set_seed(args.seed)
+
+    # reconfig some parameter
+    args.name = f"<oldpolicy-1>off2on_test_{args.seed}"
+    # v4 actionDevide_eta_actionRange
+
+    # wandb remote logger, can mute when debug
+    mute = True
+    remote_logger = LogServer(args, mute=mute)  # open logging when finish debuging
+    remote_logger = LogClient(remote_logger)
+
+    # for the hyperparameter search
+    if mute:
+        new_args = args
+    else:
+        new_args = remote_logger.server.logger.config if not mute else args
+        new_args = ConfigDict(new_args)
+        new_args.washDictChange()
+    new_args.remote_logger = remote_logger
+    return new_args, remote_logger
+
+
+### load config AND prepare logger
+args, remote_logger = prepare_arguments()
+config = args.config
+dir = "config/tppo_single.yaml"
+config_dict = utils.load_config(dir)
+paras = utils.get_paras_from_dict(config_dict)
+run_dir, curr_run = make_logpath('iff', paras.algo)
+paras.run_dir = str(run_dir)
+paras.seed = curr_run
+print("local:", paras)
+# wandb.init(project="Fish_0715", entity="krhkk")
+wandb.init(project="IFF_tail_test", entity="krhkk", config=paras, name=args.name, mode="online")# ("disabled" or "online")
+paras = utils.get_paras_from_dict(wandb.config)
+
+# paras = utils.get_paras_from_dict(paras)
+
+print("finetune", paras)
+
+
+if not os.path.exists(run_dir):
+    os.makedirs(run_dir)
+
+log_path = os.path.join(run_dir, "local_logging.csv")
+with open(log_path, mode='a', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(['Episode', 'Gt', 'ct_avg', 'cl_avg', 'entropy', 'actor_loss', 'critic_loss'])
+
+### start env
+#env = foil_env(paras)
+# num_envs = 10
+num_envs = paras.n_iff
+# env = gym.vector.make('foil-v0', num_envs=num_envs, config=paras)
+# env = gym.vector.make('fish-v0', num_envs=num_envs, config=paras, local_port=8686)
+# env = foil_env(paras, local_port=8686)
+# obs = env.reset()
+#paras.action_space, action_dim = env.envs[0].action_dim, env.envs[0].action_dim
+#paras.obs_space, observation_dim = env.envs[0].observation_dim, env.envs[0].observation_dim
+# paras.action_space, action_dim = env.single_action_space.shape[0], env.single_action_space.shape[0]
+# paras.obs_space, observation_dim = env.single_observation_space.shape[0], env.single_observation_space.shape[0]
+# paras.action_space, action_dim = 3, 3
+# paras.obs_space, observation_dim = 13, 13
+paras.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+paras.env_num = num_envs
+
+# mid_values = [
+#     187, 146, 185, 180, 185, 190, 190, 192, 180, 182, 180, 185,
+#     184, 180, 178, 182, 176, 178, 182, 180, 57, 184, 182, 186
+#     ]
+
+# mid_values = [
+#     187, 146, 180, 
+#         180, 185, 190, 
+#         190, 192, 180, 
+#         182, 180, 185, 
+#         184, 180, 178, 
+#         182, 176, 185, 
+#         182, 180, 65,  
+#         184, 182, 186  
+# ]
+mid_values = paras.mid_values
+
+
+env = ServoControlEnv(paras)
+env.load_midvalue(mid_values)
+
+state_norm_flag = False
+state_norm = Normalization((num_envs, paras.obs_space))
+reward_norm = RewardScaling((num_envs), 0.99)
+ret = []
+# obs = env.reset()
+# obs = state_norm(obs) if state_norm_flag else obs
+done = [False] * num_envs
+epsoide_length = 0
+epsoide_num = 0
+buffer_new_data = 0
+Gt_best = -100000
+Fx_best = 0.0
+Fy_best = 0.0
+
+train_cnt = 0
+train_target = paras.train_target
+
+adjust_cnt = 0
+adjust_target = 15
+
+environment_steps = int((1/paras.motor_velocity - paras.steady_time) * paras.control_frequency)
+
+agent = TPPO(paras)
+if paras.load_actor:
+    agent.load(paras.actor_path)
+    print(f'loaded actor from {paras.actor_path}')
+if paras.load_critic:
+    agent.load_v(paras.critic_path)
+    print(f'loaded critic from {paras.critic_path}')
+# agent.actor.set_sigma(2.0)
+
+
+# agent.reset_optimizer()  # change the mode from offline to online
+
+print('paras batch', paras.batch_size)
+for i in tqdm(range(config['epochs'])):
+    # rollout in env  -  rollout()
+    print('I:', i)
+    epsoide_length, Gt, time_cost = 0, 0.0, 0
+    ct_ls, cp_ls, fx_ls, dt_ls = [], [], [], []
+    agent.reset_state()
+    #Fake choosing
+    obs = np.zeros((paras.n_iff, paras.obs_space))
+    action = agent.choose_action(obs, train=True)
+    info = [{}]
+    info[0]['dt'] = 0
+
+    obs = env.reset()
+    obs = state_norm(obs) if state_norm_flag else obs
+    done = [False] * paras.n_iff
+
+    #TODO: Add functions testing the sensors
+    start_time = time.time()
+    remaining_time = 6.0
+    execution_time = time.time() - start_time
+    lim_v = 0.0
+
+    while not any(done) and epsoide_length < environment_steps and execution_time < remaining_time:
+        # print('Ep step:',epsoide_length,'cost time:', (time.time()-env.collect_time))
+        tc1 = time.time()
+        with torch.no_grad():
+            action = agent.choose_action(obs, train=True)
+        # print('cost', time.time() - tc1)
+
+        next_obs, r, done, _ = env.step(action)
+        next_state = next_obs.reshape(next_obs.shape[0], 1, next_obs.shape[1])
+        next_state = np.concatenate([agent.state.cpu().detach().numpy(), next_state], axis=1)[:, 1:, :]
+        agent.insert_data({'states': agent.state.cpu().detach().numpy(), 'actions': action, 'rewards': r,
+                           'states_next': next_state, 'dones': done})
+
+        Gt += r[1]
+        # print('steps:', epsoide_length, 'rshape:', r)
+
+        obs = next_obs
+        epsoide_length += 1
+        lim_v += env.fy_rms[1]
+        execution_time = time.time() - start_time
+        env.rate.sleep()
+        
+
+    env.save(i, save_full_data=True)
+    ct_avg = env.average_Ct[1] #Using the first one.
+    cl_avg = env.average_Cl[1]
+    eff_avg = env.average_eff[1]
+    E_avg = env.average_E[1]
+    train_cnt += 1
+    adjust_cnt += 1
+    lim_v /= epsoide_length
+    # wandb.log({"Gt": Gt, "length": epsoide_length, "episode_num": i, "avg_reward": Gt / epsoide_length,
+    #               "ct": ct_avg, 'cl': cl_avg, "policy_entropy": agent.actor.entropy, "clip_frac": agent.clipfrac,
+    #                "approxkl": agent.approxkl, "critic_loss": agent.critic_loss, "actor_loss": agent.actor_loss})
+
+
+    # log_path = os.path.join(log_dir, "local_logging.csv")
+    # with open(log_path, mode='a', newline='') as file:
+    #     writer = csv.writer(file)
+    #     writer.writerow([i, Gt, ct_avg, cl_avg, agent.actor.entropy, agent.actor_loss, agent.critic_loss])
+
+    train_start_time = time.time()
+    if train_cnt >= train_target:
+        train_cnt = 0
+        agent.learn(single=True)
+        agent.memory.buffer_dict_clear()
+        wandb.log({"Gt": Gt, "length": epsoide_length, "episode_num": i, "avg_reward": Gt / epsoide_length,
+                  "ct": ct_avg, 'cl': cl_avg, 'eff': eff_avg, 'E': E_avg, "policy_entropy": agent.actor.entropy, "clip_frac": agent.clipfrac,
+                   "approxkl": agent.approxkl, "critic_loss": agent.critic_loss, "actor_loss": agent.actor_loss, 'lim_value': lim_v})
+
+        print("epoch:", i, "length:", epsoide_length, "G:", Gt, "actor_loss:", agent.actor_loss, "critic_loss",
+              agent.critic_loss, " sigma:", agent.actor.sigma_param)
+        print("action:", action)
+        print("CTs: ", env.average_Ct)
+        print("Effs: ", env.average_eff)
+
+        if Gt > Gt_best:
+            Gt_best = Gt
+            agent.save(run_dir, "best")
+            print("save best model")
+
+        if ct_avg > Fx_best:
+            Fx_best = ct_avg
+            agent.save(run_dir, "Fxbest")
+            print("save best Thrust model")
+        
+        if eff_avg > Fy_best:
+            Fy_best = eff_avg
+            agent.save(run_dir, "Effbest")
+            print("save best Eff model")
+
+        log_path = os.path.join(run_dir, "local_logging.csv")
+        with open(log_path, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow([i, Gt, ct_avg, cl_avg, agent.actor.entropy, agent.actor_loss, agent.critic_loss])
+
+    if i % 20 == 0:
+        agent.save(run_dir, str(i))
+    train_time = time.time() - train_start_time
+
+    #Process additional time caused by early stopping.
+    addition_time = max(0.0, (6.0 - execution_time))
+
+    # train_time1 = max(0.0, (train_time))
+
+    env.refresh(train_time, addition_time)
+
+
+
+
