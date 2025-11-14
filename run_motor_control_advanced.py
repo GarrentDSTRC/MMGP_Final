@@ -43,7 +43,7 @@ class AdvancedMotorControlManager:
                 self.mid_values = [186, 175, 179, 180, 193, 177, 189, 184] * 3
                 self.action_space = 3  # 动作空间维度
                 self.obs_space = 14  # 观测空间维度
-                self.motor_velocity = 0.15  # 电机速度
+                self.motor_velocity = 0.08  # 电机速度，设置为拖曳速度0.08m/s
                 self.sample_rate = 220  # 采样率
                 self.cutoff_freq = 10.0  # 截止频率
                 self.order = 5  # 滤波器阶数
@@ -128,6 +128,9 @@ class AdvancedMotorControlManager:
             # 保存数据并打印平均力
             self.save_and_print_force_data(env, ol_folder)
             
+            # 执行重置过程，确保电机停止并恢复到安全状态
+            env.refresh(0.0, 0.0)
+            
             # 更新flag.txt为'1'表示执行完成
             with open(flag_path, 'w') as f:
                 f.write('1')
@@ -201,6 +204,23 @@ class AdvancedMotorControlManager:
             
             print(f"  整体平均X力: {avg_fx_overall:.4f}")
             print(f"  整体平均Y力: {avg_fy_overall:.4f}")
+            
+            # 无量纲化处理并保存到dataY.txt
+            # 如果环境返回的已经是无量纲系数，则直接使用
+            # 对于8个电机的平均值
+            ct_avg = avg_fx_overall/ (0.5*  1000*  0.1*0.1 * 0.08**2)
+            cl_avg = avg_fy_overall/ (0.5*  1000*  0.1*0.1 * 0.08**2)
+            
+            # 保存无量纲化后的数据到dataY.txt
+            data_y = f"{ct_avg:.4f},{cl_avg:.4f}\n"
+            
+            # 写入到当前文件夹的dataY.txt文件
+            data_y_path = os.path.join(ol_folder, 'dataY.txt')
+            with open(data_y_path, 'a') as f:  # 使用追加模式，每次运行都添加一行
+                f.write(data_y)
+            
+            print(f"  无量纲化数据已保存到 {data_y_path}: {data_y.strip()}")
+            
         else:
             print(f"无法检索 {ol_folder} 的平均力数据")
 
