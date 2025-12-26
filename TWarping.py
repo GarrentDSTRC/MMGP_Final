@@ -147,7 +147,7 @@ print(X)
 
 last_col = X[-1]  # Extract the last column
 j=0
-np.savetxt(r'.\MMGP_OL%d\dataX.txt' % (j % 8), np.array([[0, 0, 0, 0, X[-3],X[-2], X[-1], 6000]]),
+np.savetxt(r'./MMGP_OL%d/dataX.txt' % (j % 8), np.array([[0, 0, 0, 0, X[-3],X[-2], X[-1], 6000]]),
                        delimiter=',', fmt='%d')
 generate_waveform(X[0:3],"MMGP_OL%d"% (j % 8),mode=mode)
 # Test

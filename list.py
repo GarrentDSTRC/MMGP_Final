@@ -15,8 +15,11 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+# Import required functions from GPy.py
+from GPy import normalizer, findpointOL, UPB, LOWB
+
 class BatchDataProcessor:
-    def __init__(self, centroids_path=r".\\Database\\centroids.csv", data_path=r".\\Database\\x2_modified_corrected.csv"):
+    def __init__(self, centroids_path=r"./Database/centroids.csv", data_path=r"./Database/x2_modified_corrected.csv"):
         """
         初始化数据处理器，进行数据分组
         """
@@ -98,35 +101,47 @@ processor = BatchDataProcessor()
 
 # 准备输出
 testmode = "CFD"  # 与原始代码相同
-path2 = r".\\Database\\y.csv"
-ALLY = None
+path2 = r"./Database/xy.csv"  # 修改文件名以反映内容
+ALL_X = None
+ALL_Y = None
 
 # 按顺序获取批次并处理
 pos = 0
 while True:
-    batch_X, has_more = processor.get_next_batch(batch_size=16)
+    batch_X_normalized, has_more = processor.get_next_batch(batch_size=16)
     
-    if batch_X is None:
+    if batch_X_normalized is None:
         print(f"在位置 {pos} 处停止，因为不是所有组都有元素或没有更多批次")
         break
     
-    print(batch_X)
-    # 反归一化数据
-    X = normalizer.denormalize(batch_X)
+    # 反归一化得到实际物理输入 X
+    X = normalizer.denormalize(batch_X_normalized)  # 确保 normalizer 已定义
     
-    # 使用findpointOL处理
+    # 使用 findpointOL 处理，获取对应的 Y
     initialDataX, initialDataY = findpointOL(X, num_task=2, mode=testmode)
     
-    if ALLY is None:
-        ALLY = initialDataY 
+    # 注意：findpointOL 返回的 initialDataX 应该与 X 一致或为处理后的 X
+    # 但根据您的需求，我们使用反归一化后的 X 作为输入特征
+    # 因此我们直接使用 X（而非 initialDataX）作为保存的输入
+    
+    # 累积 X 和 Y
+    if ALL_X is None:
+        ALL_X = X.copy()
+        ALL_Y = initialDataY.copy()
     else:
-        ALLY = np.concatenate((ALLY, initialDataY), axis=0)
+        ALL_X = np.concatenate((ALL_X, X), axis=0)
+        ALL_Y = np.concatenate((ALL_Y, initialDataY), axis=0)
 
-    print(f"处理位置 {pos} 的批次, 当前 ALLY 形状: {ALLY.shape}")
+    print(f"处理位置 {pos} 的批次, 当前 X 形状: {ALL_X.shape}, Y 形状: {ALL_Y.shape}")
     pos += 1
 
-# 将所有y值保存到CSV文件
-np.savetxt(path2, ALLY, delimiter=',')
+# 水平拼接 X 和 Y: [x1, x2, ..., xn, y1, y2, ...]
+if ALL_X is not None and ALL_Y is not None:
+    XY_combined = np.hstack((ALL_X, ALL_Y))
+    np.savetxt(path2, XY_combined, delimiter=',')
+    print(f"最终 XY 拼接形状: {XY_combined.shape}")
+    print(f"数据已保存到: {path2}")
+else:
+    print("未生成任何数据，跳过保存。")
 
-print(f"最终 ALLY 形状: {ALLY.shape}")
 print("处理完成.")

@@ -16,14 +16,14 @@ from functools import partial
 from scipy.spatial.distance import cdist
 # Load the new data file without headers
 import os
-if os.path.exists('Database\centroids.csv'):
-    centroids_df = pd.read_csv('Database\centroids.csv', header=None)
+if os.path.exists('Database/centroids.csv'):
+    centroids_df = pd.read_csv('Database/centroids.csv', header=None)
     centroids_array = centroids_df.to_numpy()
     centroids_tensor = torch.tensor(centroids_array, dtype=torch.float32)
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device("cpu")
-Frame = pd.read_excel('.\ROM\BF_search.xlsx', sheet_name="HL")
-Frame2 = pd.read_excel('.\ROM\BF_search.xlsx', sheet_name="HL")
+Frame = pd.read_excel('./ROM/BF_search.xlsx', sheet_name="HL", engine='openpyxl')
+Frame2 = pd.read_excel('./ROM/BF_search.xlsx', sheet_name="HL", engine='openpyxl')
 #CT2ETA2_CUT; ETA_CUT
 #TestX = torch.FloatTensor(Frame.iloc[:, 0:4].to_numpy()).to(device)
 St = torch.linspace(0.6,1.0,5)
@@ -145,20 +145,20 @@ def findpointOL(X,num_task=1,mode="experiment"):
         num_task=np.abs(num_task)
         for i in range(int(num_p/8)):
             for j in range(8):
-                generate_waveform(X[i*8+j,0:3].tolist(),r'.\MMGP_OL%d'%(j%8),mode)
-                np.savetxt(r'.\MMGP_OL%d\flag.txt'%(j%8), np.array([0]), delimiter=',', fmt='%d')
+                generate_waveform(X[i*8+j,0:3].tolist(),r'./MMGP_OL%d'%(j%8),mode)
+                np.savetxt(r'./MMGP_OL%d/flag.txt'%(j%8), np.array([0]), delimiter=',', fmt='%d')
                 fill=np.array([[0,0,0,0,X[i*8+j,-3],X[i*8+j,-2],X[i*8+j,-1],6000 ]])
-                np.savetxt(r'.\MMGP_OL%d\dataX.txt' % (j % 8), fill, delimiter=',', fmt='%.2f')
+                np.savetxt(r'./MMGP_OL%d/dataX.txt' % (j % 8), fill, delimiter=',', fmt='%.2f')
             for j in range(8):
-                flag=np.loadtxt(r'.\MMGP_OL%d\flag.txt'%(j%8), delimiter=",", dtype="int")
+                flag=np.loadtxt(r'./MMGP_OL%d/flag.txt'%(j%8), delimiter=",", dtype="int")
 
                 while flag==0:
                     try:
-                        flag=np.loadtxt(r'.\MMGP_OL%d\flag.txt'%(j%8), delimiter=",", dtype="int")
+                        flag=np.loadtxt(r'./MMGP_OL%d/flag.txt'%(j%8), delimiter=",", dtype="int")
                     finally:
                         time.sleep(25)
                         print("程序运行时间",(time.time()-inittime)/3600)
-                all_Y.append(np.loadtxt(r'.\MMGP_OL%d\dataY.txt'%(j%8), delimiter=",", dtype="float"))
+                all_Y.append(np.loadtxt(r'./MMGP_OL%d/dataY.txt'%(j%8), delimiter=",", dtype="float"))
         all_Y=np.asarray(all_Y)
         all_Y[:,1]=all_Y[:,1]*OLSCALE
 
