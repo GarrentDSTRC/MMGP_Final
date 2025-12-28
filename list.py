@@ -100,7 +100,7 @@ class BatchDataProcessor:
 processor = BatchDataProcessor()
 
 # 准备输出
-testmode = "CFD"  # 与原始代码相同
+testmode = "experiment_cluster"  # 与原始代码相同
 path2 = r"./Database/xy.csv"  # 修改文件名以反映内容
 ALL_X = None
 ALL_Y = None

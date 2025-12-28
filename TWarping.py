@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 controlFre = 3000
 c=0.1
-U=0.1
+U=0.15
 mode="experiment_cluster"
 def generate_waveform( X, folder_name,mode="CFD"):
     # 创建文件夹（如果不存在）

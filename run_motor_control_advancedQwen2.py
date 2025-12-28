@@ -108,7 +108,7 @@ class AdvancedMotorControlManager:
         env = ServoControlEnv(self.mock_params)
         env.load_midvalue(self.mock_params.mid_values)
         obs = env.reset()
-        time.sleep(10)
+        # time.sleep(10)
 
         # 预计算每个电机的周期（秒）
         motor_periods = [len(seq) * self.step_interval for seq in sequences]
@@ -158,9 +158,9 @@ class AdvancedMotorControlManager:
 
             # # 重置电机
             env.refresh(0.0, 0.0)
-            self.iteration+=1            # 在长时间运行后重置环境，清空 obs_array 等累积数据，并等待 10 秒
-            print("🔄 等待 10 秒...")
-            time.sleep(10)  # 等待 10 秒
+            self.iteration+=1            # 在长时间运行后重置环境，清空 obs_array 等累积数据
+            # print("🔄 等待 10 秒...")
+            # time.sleep(10)  # 等待 10 秒
 
             # 更新所有 flag 为 '1'
             for _, folder in ol_list:
@@ -210,7 +210,7 @@ class AdvancedMotorControlManager:
         # --- 第二步：计算8个电机的无量纲系数 ---
         density = 1000    # kg/m³
         area = 0.1 * 0.1  # m²
-        velocity = 0.08   # m/s
+        velocity = 0.15   # m/s
         dynamic_pressure = 0.5 * density * velocity**2
 
         # 计算8个电机的无量纲系数

@@ -156,8 +156,8 @@ def findpointOL(X,num_task=1,mode="experiment"):
                     try:
                         flag=np.loadtxt(r'./MMGP_OL%d/flag.txt'%(j%8), delimiter=",", dtype="int")
                     finally:
-                        time.sleep(25)
-                        print("程序运行时间",(time.time()-inittime)/3600)
+                        time.sleep(0.4)
+                print("程序运行时间",(time.time()-inittime)/3600)
                 all_Y.append(np.loadtxt(r'./MMGP_OL%d/dataY.txt'%(j%8), delimiter=",", dtype="float"))
         all_Y=np.asarray(all_Y)
         all_Y[:,1]=all_Y[:,1]*OLSCALE
