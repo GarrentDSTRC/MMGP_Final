@@ -126,8 +126,8 @@ while True:
     
     # 累积 X 和 Y
     if ALL_X is None:
-        ALL_X = X.copy()
-        ALL_Y = initialDataY.copy()
+        ALL_X = X
+        ALL_Y = initialDataY
     else:
         ALL_X = np.concatenate((ALL_X, X), axis=0)
         ALL_Y = np.concatenate((ALL_Y, initialDataY), axis=0)
@@ -135,13 +135,13 @@ while True:
     print(f"处理位置 {pos} 的批次, 当前 X 形状: {ALL_X.shape}, Y 形状: {ALL_Y.shape}")
     pos += 1
 
-# 水平拼接 X 和 Y: [x1, x2, ..., xn, y1, y2, ...]
-if ALL_X is not None and ALL_Y is not None:
-    XY_combined = np.hstack((ALL_X, ALL_Y))
-    np.savetxt(path2, XY_combined, delimiter=',')
-    print(f"最终 XY 拼接形状: {XY_combined.shape}")
-    print(f"数据已保存到: {path2}")
-else:
-    print("未生成任何数据，跳过保存。")
+    # 水平拼接 X 和 Y: [x1, x2, ..., xn, y1, y2, ...]
+    if ALL_X is not None and ALL_Y is not None:
+        XY_combined = np.hstack((ALL_X, ALL_Y))
+        np.savetxt(path2, XY_combined, delimiter=',')
+        print(f"最终 XY 拼接形状: {XY_combined.shape}")
+        print(f"数据已保存到: {path2}")
+    else:
+        print("未生成任何数据，跳过保存。")
 
 print("处理完成.")

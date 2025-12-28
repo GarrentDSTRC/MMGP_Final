@@ -142,6 +142,7 @@ class ServoControlEnv(gym.Env):
                                          'Fx8', 'Fy8', 'Fz8', 'Tx8', 'Ty8', 'Tz8',
                                          ])
                     csv_writer.writerows(list_to_save)
+                print(f"save to  {filename}")
 
                 obsname = self.obs_template.format(iter)
                 with open(obsname, mode='w', newline='') as csv_file:
@@ -161,7 +162,60 @@ class ServoControlEnv(gym.Env):
             print('Evaluating data',data_array.shape)
             steps = data_array.shape[0]
 
-            np_obs = np.array(self.obs_array)
+            # Handle potential inhomogeneous shapes in obs_array
+            # Expected shape for each obs: (n_iff * obs_dim,) = (8 * 9,) = (72,)
+            expected_obs_length = self.n_iff * self.obs_dim
+
+            try:
+                # Attempt to convert to numpy array, catch the specific error
+                np_obs = np.array(self.obs_array)
+                # If successful, check if the shape is as expected for further calculations
+                if np_obs.ndim == 2 and np_obs.shape[1] == expected_obs_length:
+                    pass # Shape is as expected
+                else:
+                    print(f"⚠️  np_obs 形状 {np_obs.shape} 与预期 (N, {expected_obs_length}) 不符，尝试处理...")
+                    raise ValueError("Unexpected shape after np.array")
+
+            except (ValueError, TypeError) as e:
+                if "inhomogeneous shape" in str(e) or "setting an array element with a sequence" in str(e) or np_obs.shape[1] != expected_obs_length:
+                    # Handle the inhomogeneous shape error or unexpected final shape
+                    print(f"⚠️  检测到 obs_array 问题 (错误: {e})，正在处理...")
+                    print(f"   预期观测长度: {expected_obs_length}")
+                    # Check individual lengths
+                    lengths = [len(obs) if isinstance(obs, (list, np.ndarray)) else np.asarray(obs).size for obs in self.obs_array]
+                    unique_lengths = set(lengths)
+                    print(f"   obs_array 中观测长度的种类: {unique_lengths}")
+
+                    processed_obs = []
+                    for i, obs in enumerate(self.obs_array):
+                        obs_array = np.asarray(obs)
+                        if obs_array.ndim > 1:
+                            obs_array = obs_array.flatten()
+                        current_len = obs_array.size
+
+                        if current_len == expected_obs_length:
+                            processed_obs.append(obs_array)
+                        elif current_len < expected_obs_length:
+                            # Pad with zeros
+                            padded = np.pad(obs_array, (0, expected_obs_length - current_len), mode='constant', constant_values=0)
+                            processed_obs.append(padded)
+                            print(f"     修正: 索引 {i}, 长度 {current_len} -> {expected_obs_length} (填充)")
+                        else:
+                            # Truncate
+                            truncated = obs_array[:expected_obs_length]
+                            processed_obs.append(truncated)
+                            print(f"     修正: 索引 {i}, 长度 {current_len} -> {expected_obs_length} (截断)")
+
+                    print(f"   修正后 obs_array 长度: {len(processed_obs)}")
+                    np_obs = np.array(processed_obs)
+                    print(f"   修正后的 np_obs 形状: {np_obs.shape}")
+                    if np_obs.shape[1] != expected_obs_length:
+                         print(f"❌  修正后 np_obs 形状 {np_obs.shape} 仍不符合预期 (N, {expected_obs_length})，可能无法继续计算。")
+                         # Depending on requirements, you might want to return early or raise an error here.
+                         # For now, let's proceed, but the next lines might fail if shape is still wrong.
+                else:
+                    raise  # Re-raise if it's a different ValueError
+
             # np_act = np.array(self.act_array) * np.pi / 180.0
 
             mz_indices = [6 + i * 9 for i in range(8)]

@@ -62,10 +62,8 @@ class ServoControlEnv(gym.Env):
             bfdata_directory = os.path.join(bfdata_directory, str(args.seed))
             if not os.path.exists(bfdata_directory):
                 os.makedirs(bfdata_directory)
-        bfdata_directory="/home/iff/drlenv/src/iffenv/wzy/save"
+
         self.csvname = os.path.join(bfdata_directory, "sensor_data_{}.csv")
-        
-        print("CSV",self.csvname)
         self.picklename = os.path.join(bfdata_directory, "sensor_data_{}.pkl")
 
         self.countname = os.path.join(bfdata_directory, "iter_count.txt")
@@ -214,13 +212,12 @@ class ServoControlEnv(gym.Env):
         # No need to pub midvalue here
         # self.angles_msg.angles = self.mid_values.flatten().tolist()
         # self.pub.publish(self.angles_msg)
-        time.sleep(1)
-
+        time.sleep(10)
         self.tank.stop()
-        time.sleep(30)
+        time.sleep(8)
         if train_time < self.refresh_time:
             print('sleep:', self.refresh_time - train_time + add_t)
-            time.sleep(self.refresh_time - train_time + add_t)
+            # time.sleep(self.refresh_time - train_time + add_t)
 
     def load_midvalue(self, midvalue):
         # For adjusting the 'zero' of each motor
@@ -244,7 +241,7 @@ class ServoControlEnv(gym.Env):
         # self.upper_values = self.mid_values + 25.0
         self.angles_msg.angles = self.mid_values.flatten().tolist()
         self.pub.publish(self.angles_msg)
-        time.sleep(5)
+        time.sleep(18)
         
 
 

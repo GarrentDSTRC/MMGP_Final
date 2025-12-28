@@ -2,7 +2,7 @@
 """
 主脚本：持续运行MMGP_OL文件夹的电机控制系统
 此脚本位于父目录，从src_wzy目录导入ServoControlEnv等模块
-持续循环监控并控制8台电机，等待flag.txt为'0'时执行control.txt中的控制值，
+使用实时时间同步控制8台电机，等待flag.txt为'0'时执行control.txt中的控制值，
 仅控制pitching自由度，收集大地坐标系的力数据，保存到CSV，并打印平均力
 """
 import sys
@@ -37,7 +37,7 @@ class AdvancedMotorControlManager:
                 self.excution_time = 0.035  # 执行时间
                 self.interval = 10  # 控制间隔
                 self.steady_time = 0.0  # 稳定时间
-                self.control_frequency = 20  # 控制频率20Hz
+                self.control_frequency = 3000  
                 self.refresh_time = 18  # 刷新时间
                 # 8台电机的初始中值 - 每个电机3个自由度 (pitching, heaving, swaying)
                 self.mid_values = [186, 180, 180, 175, 180, 180, 179, 180, 180, 180, 180, 180, 193, 180, 180, 177, 180, 180, 189, 180, 180, 184, 180, 180]  # 8 motors * 3 values each
@@ -57,10 +57,9 @@ class AdvancedMotorControlManager:
                 self.starting_index = 0  # Starting index for BF execution
                 self.cl_list_len = 20  # Length for running CL list
                 self.seed = 1  # Random seed
-                # 只使用pitching自由度 - 动作的第一维
-                # 设置其他维度为0，避免非pitching运动
         
         self.mock_params = MockParams()
+        self.step_interval = 1.0 / self.mock_params.control_frequency 
         
     def get_ol_folders(self):
         """获取所有MMGP_OL文件夹列表"""
@@ -126,7 +125,7 @@ class AdvancedMotorControlManager:
             obs = env.reset()
             print(f"{ol_folder} 的环境已重置")
             
-            # 使用环境执行控制值
+            # 使用环境执行控制值 - 现在使用时间同步方法
             self.execute_control_with_env(env, control_values, ol_folder)
             
             # 保存数据并打印平均力
@@ -150,41 +149,78 @@ class AdvancedMotorControlManager:
     
     def execute_control_with_env(self, env, control_values, ol_folder):
         """
-        使用ServoControlEnv执行控制，仅使用pitching自由度
+        使用时间同步方法执行控制，仅使用pitching自由度
+        根据实际运行时间确定当前控制值，而非固定步数
         """
-        print(f"为 {ol_folder} 执行控制，包含 {len(control_values)} 个值和 {self.cycles} 个循环")
+        # 计算单个控制周期的时间 (秒)
+        cycle_time = len(control_values) * self.step_interval
         
-        # 使用时间间隔处理多循环的控制值
-        for cycle in range(self.cycles):
-            print(f"  为 {ol_folder} 开始循环 {cycle + 1}/{self.cycles}")
-            
-            # 使用适当的时间间隔(1/3000秒)处理每个控制值
-            for i, control_val in enumerate(control_values):
-                # 为8台电机创建仅含pitching自由度的动作(第一维)
-                # 其他维度(第2、3维)设为0以避免非pitching运动
-                action = np.zeros((self.n_iff, 3))  # 8个电机，每个3个动作
+        # 计算总控制时间
+        total_time = self.cycles * cycle_time
+        start_time = time.time()
+        
+        print(f"为 {ol_folder} 执行时间同步控制:")
+        print(f"  控制值数量: {len(control_values)}")
+        print(f"  控制频率: {self.mock_params.control_frequency} Hz (步长 = {self.step_interval:.3f}秒)")
+        print(f"  单周期时间: {cycle_time:.3f}秒")
+        print(f"  总控制时间: {total_time:.3f}秒 ({self.cycles} 个周期)")
+        
+        steps_executed = 0
+        last_cycle_index = -1
+        
+        try:
+            # 主控制循环 - 基于实际时间
+            while (current_time := time.time()) < start_time + total_time:
+                # 计算已过去时间
+                elapsed_time = current_time - start_time
                 
-                # 将控制值应用到pitching自由度(第一维)
+                # 计算当前在总周期中的位置
+                current_cycle = int(elapsed_time // cycle_time)
+                time_in_cycle = elapsed_time % cycle_time
+                
+                # 根据时间在周期中的位置确定控制索引
+                step_index = int(time_in_cycle // self.step_interval)
+                step_index = min(step_index, len(control_values) - 1)  # 边界保护
+                
+                # 检测新周期开始
+                if current_cycle > last_cycle_index:
+                    print(f"  开始周期 {current_cycle + 1}/{self.cycles} (时间: {elapsed_time:.3f}/{total_time:.3f}秒)")
+                    last_cycle_index = current_cycle
+                
+                # 获取当前控制值
+                control_val = control_values[step_index]
+                
+                # 为8台电机创建仅含pitching自由度的动作(第一维)
+                action = np.zeros((self.n_iff, 3))  # 8个电机，每个3个动作
                 for motor_idx in range(self.n_iff):
                     action[motor_idx, 0] = control_val  # 仅pitching自由度
-                    # 其他维度保持为0(无heaving或swaying)
                 
                 # 在环境中执行动作
                 next_obs, reward, done, info = env.step(action)
+                steps_executed += 1
                 
-                print(f"    循环 {cycle + 1}, 步骤 {i + 1}/{len(control_values)}: "
-                      f"对所有8个电机应用pitching控制值 {control_val:.3f}")
+                # 监控执行状态
+                if steps_executed % 10 == 0:  # 每10步打印一次状态
+                    print(f"    周期 {current_cycle + 1}, 步骤 {step_index + 1}/{len(control_values)}: "
+                          f"控制值 = {control_val:.3f} (总时间: {elapsed_time:.3f}/{total_time:.3f}秒)")
                 
-                # 如果任何电机完成，重置环境
+                # 处理完成状态
                 if any(done):
-                    print(f"    一些电机完成，为 {ol_folder} 重置环境")
+                    print(f"    警告: 部分电机在 {ol_folder} 报告完成状态，重置环境")
                     env.reset()
                 
-                # 简单休眠以控制时间
-                # 在实际实现中，环境处理时间
-                time.sleep(1.0/3000.0)
-        
-        print(f"  为 {ol_folder} 完成 {self.cycles} 个循环")
+                # 精确等待至下一步时间点
+                current_time = time.time()
+
+            
+            print(f"  控制完成: 执行了 {steps_executed} 步，覆盖 {self.cycles} 个完整周期")
+            
+        except KeyboardInterrupt:
+            print("\n  警告: 控制过程中断 (用户中断)")
+            raise
+        except Exception as e:
+            print(f"  错误: 控制执行异常: {str(e)}")
+            raise
     
     def save_and_print_force_data(self, env, ol_folder):
         """
@@ -209,21 +245,23 @@ class AdvancedMotorControlManager:
             print(f"  整体平均X力: {avg_fx_overall:.4f}")
             print(f"  整体平均Y力: {avg_fy_overall:.4f}")
             
-            # 无量纲化处理并保存到dataY.txt
-            # 如果环境返回的已经是无量纲系数，则直接使用
-            # 对于8个电机的平均值
-            ct_avg = avg_fx_overall/ (0.5*  1000*  0.1*0.1 * 0.08**2)
-            cl_avg = avg_fy_overall/ (0.5*  1000*  0.1*0.1 * 0.08**2)
+            # 无量纲化处理
+            density = 1000    # 水的密度 kg/m³
+            area = 0.1 * 0.1  # 参考面积 m² (假设0.1m x 0.1m)
+            velocity = 0.08   # 拖曳速度 m/s
+            
+            dynamic_pressure = 0.5 * density * velocity**2
+            ct_avg = avg_fx_overall / (dynamic_pressure * area)
+            cl_avg = avg_fy_overall / (dynamic_pressure * area)
             
             # 保存无量纲化后的数据到dataY.txt
             data_y = f"{ct_avg:.4f},{cl_avg:.4f}\n"
-
-            # 写入到当前文件夹的dataY.txt文件
             data_y_path = os.path.join(ol_folder, 'dataY.txt')
-            with open(data_y_path, 'a') as f:  # 使用追加模式，每次运行都添加一行
+            
+            with open(data_y_path, 'a') as f:
                 f.write(data_y)
 
-            print(f"  无量纲化数据已保存到 {data_y_path}: {data_y.strip()}")
+            print(f"  无量纲化数据已追加到 {data_y_path}: {data_y.strip()}")
             
         else:
             print(f"无法检索 {ol_folder} 的平均力数据")
@@ -237,6 +275,9 @@ class AdvancedMotorControlManager:
             return
         
         print("开始持续循环执行电机控制，等待标志为'0'然后执行...")
+        print(f"控制频率: {self.mock_params.control_frequency} Hz")
+        print(f"每个周期步数: 动态确定 (基于control.txt)")
+        print("按 Ctrl+C 停止程序")
         
         try:
             while True:  # 无限循环
@@ -247,11 +288,9 @@ class AdvancedMotorControlManager:
                     if success:
                         executed_count += 1
                 
-                if executed_count > 0:
-                    print(f"本次循环为 {executed_count} 个文件夹执行了电机控制")
-                
-                # 短暂休眠以避免过度占用CPU
-                time.sleep(0.5)
+                if executed_count == 0:
+                    # 没有执行任何文件夹时短暂休眠避免CPU过载
+                    time.sleep(0.5)
                 
         except KeyboardInterrupt:
             print("\n接收到中断信号，停止持续执行...")
@@ -262,7 +301,7 @@ def main():
     parser = argparse.ArgumentParser(description='运行MMGP_OL文件夹的电机控制系统')
     parser.add_argument('--base_path', type=str, default='.', 
                        help='包含MMGP_OL文件夹的基路径(默认为当前目录)')
-    parser.add_argument('--cycles', type=int, default=3, help='重复控制值的循环次数')
+    parser.add_argument('--cycles', type=int, default=5, help='重复控制值的循环次数')
     
     args = parser.parse_args()
     
@@ -273,11 +312,9 @@ def main():
     # 创建高级电机控制管理器
     manager = AdvancedMotorControlManager(base_path=args.base_path, cycles=args.cycles)
     
-    print("使用ServoControlEnv集成运行持续执行循环，等待标志为0然后执行，永不停止...")
-    print("按 Ctrl+C 停止程序")
     manager.execute_continuous()
     print("高级电机控制持续执行已停止。")
 
 
 if __name__ == "__main__":
-    main()
+    main()        

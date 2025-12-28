@@ -40,6 +40,6 @@ class Tankmotor:
 if __name__ == '__main__':
     tankmotor = Tankmotor()  
     tankmotor.stop()
-    #    time.sleep(100)                
+    #time.sleep(100)                
     # tankmotor.start()
-    #    tankmotor.singlestep()
+    # tankmotor.singlestep()

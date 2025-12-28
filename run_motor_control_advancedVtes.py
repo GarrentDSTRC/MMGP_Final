@@ -240,32 +240,21 @@ class MotorControlManager:
             print("\n[MAIN] 收到中断信号，退出程序")
 
     def _save_dimensionless_forces(self, shared_env, ol_folders):
-        env.save(1, save_full_data=True)
         try:
-            ct_list = shared_env.average_Ct
-            cl_list = shared_env.average_Cl
+            avg_fx = np.mean(shared_env.average_Ct) if len(shared_env.average_Ct) > 0 else 0.0
+            avg_fy = np.mean(shared_env.average_Cl) if len(shared_env.average_Cl) > 0 else 0.0
+            print(f"[SAVE] 整体平均力 - X: {avg_fx:.6f}, Y: {avg_fy:.6f}")
 
-            if len(ct_list) == 0 or len(cl_list) == 0:
-                print("[SAVE] 警告：力数据为空，跳过保存")
-                ct, cl = 0.0, 0.0
-            else:
-                avg_fx = np.mean(ct_list)
-                avg_fy = np.mean(cl_list)
+            density, area, velocity = 1000.0, 0.01, 0.08
+            dyn_press = 0.5 * density * velocity**2
+            ct = avg_fx / (dyn_press * area) if dyn_press * area != 0 else 0.0
+            cl = avg_fy / (dyn_press * area) if dyn_press * area != 0 else 0.0
 
-                density, area, velocity = 1000.0, 0.01, 0.08
-                dyn_press = 0.5 * density * velocity**2
-                ct = avg_fx / (dyn_press * area) if dyn_press * area != 0 else 0.0
-                cl = avg_fy / (dyn_press * area) if dyn_press * area != 0 else 0.0
-
-            print(f"[SAVE] 本轮全局无量纲力: Ct={ct:.4f}, Cl={cl:.4f}")
-
-            # ✅ 关键修改：覆盖写入（每个文件只保留最新一行）
             for folder in ol_folders:
                 data_y_path = os.path.join(folder, 'dataY.txt')
-                with open(data_y_path, 'w') as f:  # 注意：'w' 而非 'a'
+                with open(data_y_path, 'a') as f:
                     f.write(f"{ct:.4f},{cl:.4f}\n")
-            print("[SAVE] 已覆盖写入所有 dataY.txt（每文件仅1行）")
-
+            print(f"[SAVE] 无量纲力已追加到所有 dataY.txt: Ct={ct:.4f}, Cl={cl:.4f}")
         except Exception as e:
             print(f"[SAVE] 保存无量纲力失败: {e}")
 
